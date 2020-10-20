@@ -1,4 +1,4 @@
-## Welcome to GitHub Pages
+## CodeLive
 
 You can use the [editor on GitHub](https://github.com/calvin-senior-project/thonny/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
