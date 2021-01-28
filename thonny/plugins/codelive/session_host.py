@@ -1,4 +1,3 @@
-
 import json
 import sys
 from threading import Thread, Event, Lock
@@ -14,6 +13,7 @@ import paho.mqtt.client as mqtt
 #from queue import SimpleQueue
 
 from thonny import get_workbench
+from tkinter import PhotoImage
 
 WORKBENCH = get_workbench()
 QOS = 0
@@ -67,6 +67,13 @@ class ProcessThread(Thread):
         Thread.__init__(self)
         self._name = name
         self._editor_notebook = WORKBENCH.get_editor_notebook()
+        self._end = False
+
+    def receive(self, sock):
+        chunk = sock.recv(MSGLEN)
+        if chunk == b'':
+            raise RuntimeError("socket connection broken")
+        return chunk
 
     def send_response(self, client, message):
         (result, num) = client.publish('Calvin/CodeLive/Change', message, qos=QOS)
@@ -79,17 +86,27 @@ class ProcessThread(Thread):
             msg = workQueue.get()
             if msg:
                 codeview = self._editor_notebook.get_current_editor().get_text_widget()
-                print("message: %s\t command: %s\tposition: %s\tsrting: %s" % (msg, msg[0], msg[2:msg.find("]")], msg[msg.find("]") + 1:]))
+                print("command: %s\tposition: %s\tsrting: %s" % (msg[0], msg[2:msg.find("]")], msg[msg.find("]") + 1:]))
                 if msg[0] == "I":
-                    codeview.insert(msg[2:msg.find("]")], msg[msg.find("]") + 1:])
-                    pass
-                else:
+                    position = msg[2 : msg.find("]")]
+                    new_text = msg[msg.find("]") + 1 : ]
+                    codeview.insert(position, new_text)
+                elif msg[0] == "D":
+                    codeview.delete(msg[2:msg.find("]")])
+                elif msg[0] == "R":
+                    codeview.insert(position, '')
+                    codeview.insert(position, '\r')
+                elif msg[0] == "T":
+                    codeview.insert(position, '\t')
+                elif len(msg) >= 5 and msg[0 : 5] == "FIRST":
+                    # self.insert_cursor(codeview, msg[6 : msg.find("]")])
                     pass
             else:
                 print("...")
             if exitFlag.is_set():
                 break
             time.sleep(.25)
+
 
 if __name__ == "__main__":
     # Unit Tests

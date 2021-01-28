@@ -7,6 +7,7 @@ class StartUpDialog(Toplevel):
         self._host_username = ""
         self._auth_token = ""
         self._max_num_users = ""
+        self._mode = ""
 
         self._pages = {"welcome":      self.welcome_page(),
                        "client_page":  self.client_setup(),
@@ -22,20 +23,32 @@ class StartUpDialog(Toplevel):
               width=50).pack()
 
         Button(master=page,
-               text="Host").pack()
+               text="Host",
+               command=self.set_host).pack()
         Button(master=page,
-               text="Client").pack()
+               text="Client",
+               command=self.set_client).pack()
+        Button(master=page,
+               text="Cancel",
+               command=self.destroy).pack()
         page.pack()
-        pass
     
     def client_setup(self):
         return ""
 
     def host_setup(self):
         return ""
+    
+    def set_client(self):
+        self._mode = "Client"
+        self.destroy()
+    
+    def set_host(self):
+        self._mode = "Host"
+        self.destroy()
 
     def run(self):
         return {}
     
     def getInfo(self):
-        return "Host"
+        return self._mode
