@@ -33,7 +33,9 @@ def start_session():
 def callback():
     global session
     if session != None:
-        session.end()
+        session.kill()
+        code = "done"
+
         if DEBUG:
             print("Session end flag set")
     else:
