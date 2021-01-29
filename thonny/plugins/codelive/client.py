@@ -21,7 +21,7 @@ WORKBENCH = get_workbench()
 
 class Session:
 
-    def __init__(self, name = None, shared_editors = None, is_host = False, is_cohost = False):
+    def __init__(self, name = None, topic = None, shared_editors = None, is_host = False, is_cohost = False):
         self._remote_users = dict()
         self._name = name if name != None else ("Host" if is_host else "Client")
 
@@ -32,7 +32,7 @@ class Session:
 
         # Network handles
         # self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connection = MqttConnection(self._name)
+        self._connection = MqttConnection(self._name, topic = topic)
         self.network_lock = threading.Lock()
 
         # client privilage flags
@@ -232,10 +232,10 @@ class Session:
         elif msg[0] == "T":
             tk.Text.insert(codeview, position, '\t')
         
-        if msg[0] in ("I", "D", "R", "T", "M"):
-            user_id = msg[msg.find("(") + 1 : msg.find("|")]
-            cur_position = msg[msg.find("|") + 1: msg.find(")")]
-            self.update_remote_cursor(user_id, cur_position, is_keypress= msg[0] != "M")
+        # if msg[0] in ("I", "D", "R", "T", "M"):
+        #     user_id = msg[msg.find("(") + 1 : msg.find("|")]
+        #     cur_position = msg[msg.find("|") + 1: msg.find(")")]
+        #     self.update_remote_cursor(user_id, cur_position, is_keypress= msg[0] != "M")
 
     def update_remote_cursor(self, user_id, index, is_keypress = False):
         color = self._remote_users[user_id].color

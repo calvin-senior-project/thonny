@@ -12,7 +12,7 @@ from thonny.tktextext import EnhancedText, TweakableText
 from thonny.codeview import SyntaxText
 
 from thonny.plugins.codelive.client import Session
-from thonny.plugins.codelive.start_up_dialog import StartUpDialog
+from thonny.plugins.codelive.start_up_dialog import StartUpWizard
 
 import thonny.plugins.codelive.patched_callbacks as pc
 
@@ -21,21 +21,21 @@ session = None
 DEBUG = True
 
 def start_session():
-    top = StartUpDialog(master=WORKBENCH)
+    top = StartUpWizard(parent=WORKBENCH)
     WORKBENCH.wait_window(top)
 
     global session
-    if top.getInfo() == "Host":
+    if top.get_session_mode() == "Host":
         print("Starting host")
         session = Session(is_host=True)
-    elif top.getInfo() == "Client":
+    elif top.get_session_mode() == "Client":
         print("Starting client")
-        session = Session()
+        session = Session(topic = top.get_topic())
     else:
         return ("null", -1)
     
     session.start_session()
-    return (top.getInfo(), 0)
+    return (top.get_session_mode(), 0)
 
 def toolbar_callback():
     global session

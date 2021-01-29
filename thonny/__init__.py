@@ -160,13 +160,13 @@ def launch():
     if not _check_welcome():
         return 0
 
-    if _should_delegate():
-        try:
-            _delegate_to_existing_instance(sys.argv[1:])
-            print("Delegated to an existing Thonny instance. Exiting now.")
-            return 0
-        except (ConnectionRefusedError, socket.timeout):
-            pass
+    # if _should_delegate():
+    #     try:
+    #         _delegate_to_existing_instance(sys.argv[1:])
+    #         print("Delegated to an existing Thonny instance. Exiting now.")
+    #         return 0
+    #     except (ConnectionRefusedError, socket.timeout):
+    #         pass
 
     # Did not or could not delegate
 

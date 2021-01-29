@@ -27,7 +27,7 @@ def connect_callback(client, userdata, flags, rc):
 def message_callback(client, data, msg):
     if msg.topic == client.topic:
         print(msg.payload.decode("utf-8"))
-        WORKBENCH.event_generate("RemoteChange", change=msg)
+        WORKBENCH.event_generate("RemoteChange", change=msg.payload.decode("utf-8"))
 
 class MqttConnection(mqtt.Client):
     def __init__(self, 
@@ -46,8 +46,12 @@ class MqttConnection(mqtt.Client):
         self.qos = qos
         self.delay = delay
         self.topic = topic or self.get_topic(session_name)
-        print("Topic: %s", self.topic)
         
+        if topic == None:
+            print("New Topic: %s" % self.topic)
+        else:
+            print("Existing topic: %s" % self.topic)
+
         self.on_connect = on_connect or connect_callback
         self.on_message = on_message or message_callback
         self.on_publish = on_publish or publish_callback
@@ -56,7 +60,7 @@ class MqttConnection(mqtt.Client):
         return 1883
     
     def get_topic(self, name):
-        return name + "_" + ''.join(random.choice(string.ascii_uppercase) for i in range(6))
+        return name# + "_" + ''.join(random.choice(string.ascii_uppercase) for i in range(6))
 
     def get_default_broker(self):
         global BROKER_URLS
@@ -70,6 +74,23 @@ class MqttConnection(mqtt.Client):
     def test_broker(self, url):
         # TODO: add broker test
         return True
+    
+    def on_publish(self, userdata, mid):
+        print("sent")
+        #do something
+
+    # Callback when connecting to the MQTT broker
+    def on_connect(self, userdata, flags, rc):
+        if rc==0:
+            print('Connected to ' + self.broker)
+
+    def on_message(self, client, data, msg):
+        if msg.topic == self.topic:
+            print(msg.payload.decode("utf-8"))
+            WORKBENCH.event_generate("RemoteChange", change=msg.payload.decode("utf-8"))
+    
+    def publish(self, msg):
+        mqtt.Client.publish(self, self.topic, msg)
 
     def Connect(self):
         mqtt.Client.connect(self, self.broker, self.port, 60)
