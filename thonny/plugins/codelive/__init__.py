@@ -12,8 +12,10 @@ from thonny.tktextext import EnhancedText, TweakableText
 from thonny.codeview import SyntaxText
 
 from thonny.plugins.codelive.client import Session
-from thonny.plugins.codelive.start_up_dialog import StartUpWizard
 
+from thonny.plugins.codelive.start_up_dialog import StartUpWizard
+from thonny.plugins.codelive.views.create_session import CreateSessionDialog
+from thonny.plugins.codelive.views.join_session import JoinSessionDialog
 import thonny.plugins.codelive.patched_callbacks as pc
 
 WORKBENCH = get_workbench()
@@ -53,42 +55,96 @@ def toolbar_callback():
     widget.insert = types.MethodType(pc.patched_insert, widget)
     widget.delete = types.MethodType(pc.patched_delete, widget) 
 
-def bounce_insert(event):
-    print("Insert bounce:\n\tindex: %s\n\ttext:%s" % (event.index, repr(event.text)))
+def create_session():
+    top = CreateSessionDialog(WORKBENCH)
+    WORKBENCH.wait_window(top)
 
-def bounce_delete(event):
-    print("Delete bounce:\n\tindex1: %s\n\tindex2: %s" % (event.index1, event.index2))
+    session = Session(name = top.data["name"],
+                      topic = top.data["topic"],
+                      is_host = True)
 
-def inserter():
-    get_workbench().get_editor_notebook().get_current_editor().get_text_widget().insert("1.0", "howdy")    
+    session.start_session()
+
+def join_session():
+    top = JoinSessionDialog(WORKBENCH)
+    WORKBENCH.wait_window(top)
+
+    session = Session(name = top.data["name"],
+                      topic = top.data["topic"])
+    session.start_session()
+
+def end_session():
+    pass
+
+def leave_session():
+    pass
+
+def session_status():
+    pass
+
+def null_cmd(event):
+    print("hi")
 
 def load_plugin():
-    WORKBENCH.add_command(command_id = "add_randomItem",
+    
+    WORKBENCH.add_command(command_id = "codelive",
                           menu_name = "CodeLive",
                           command_label = "Start a Live Collaboration Session",
                           handler = toolbar_callback,
                           position_in_group="end",
                           image=os.path.join(os.path.dirname(__file__), "res/people-yellow-small.png"),
-                          caption = "CodeLive",
+                          caption = "CodeLive: MQTT based collaboration plugin",
+                          #submenu=submenu,
+                          include_in_menu= False,
                           include_in_toolbar = True,
                           bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "add_random_Item",
-                          menu_name = "Code",
-                          command_label = "Start a Live Collaboration Session",
-                          handler = inserter,
+                
+    WORKBENCH.add_command(command_id = "codelive_host",
+                          menu_name = "CodeLive",
+                          command_label = "Create a New Session",
+                          handler = create_session,
+                          group = 20,
                           position_in_group="end",
-                          caption = "CodeLiv",
-                          include_in_toolbar = True,
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_join",
+                          menu_name = "CodeLive",
+                          command_label = "Join an Existing Session",
+                          handler = join_session,
+                          group=20,
+                          position_in_group="end",
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_end",
+                          menu_name = "CodeLive",
+                          command_label = "End Session",
+                          tester = lambda: session,
+                          handler = end_session,
+                          group=21,
+                          position_in_group="end",
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_leave",
+                          menu_name = "CodeLive",
+                          command_label = "Leave Session",
+                          tester = lambda: session,
+                          handler = leave_session,
+                          group=21,
+                          position_in_group="end",
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_show",
+                          menu_name = "CodeLive",
+                          command_label = "Show Session Status",
+                          handler = session_status,
+                          group=23,
+                          position_in_group="end",
+                          caption = "End",
                           bell_when_denied = True)
 
-    # EnhancedText.perform_smart_backspace = pc.patched_perform_smart_backspace
-    # EnhancedText.perform_smart_tab = pc.patched_perform_smart_tab
-    # EnhancedText.perform_midline_tab = pc.patched_perform_smart_tab
-    # EnhancedText._change_indentation = pc.patched_change_indentation
-    # EnhancedText._set_region = pc.patched_set_region
     SyntaxText.insert = pc.patched_insert
     SyntaxText.delete = pc.patched_delete
-    
-    WORKBENCH.bind("LocalInsert", bounce_insert)
-    WORKBENCH.bind("LocalDelete", bounce_delete)

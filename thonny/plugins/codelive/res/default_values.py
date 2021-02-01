@@ -99,5 +99,5 @@ DEFUALT_ADJECTIVES = [
 ]
 
 ANIMAL_NAMES = [
-    
+       
 ]

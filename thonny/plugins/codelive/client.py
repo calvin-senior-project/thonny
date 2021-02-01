@@ -10,7 +10,7 @@ import random
 import copy
 import sys
 
-from thonny.plugins.codelive.mqtt_connection import *
+from thonny.plugins.codelive.mqtt_connection import MqttConnection
 from thonny.plugins.codelive.utils import get_instruction, get_instr_v2, get_new_id, free_id
 from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS
 from thonny import get_workbench
@@ -21,9 +21,19 @@ WORKBENCH = get_workbench()
 
 class Session:
 
-    def __init__(self, name = None, topic = None, shared_editors = None, is_host = False, is_cohost = False):
+    def __init__(self, 
+                 _id = -1,
+                 name = None,
+                 topic = None,
+                 shared_editors = None,
+                 is_host = False,
+                 is_cohost = False,
+                 debug = True):
+
         self._remote_users = dict()
-        self._name = name if name != None else ("Host" if is_host else "Client")
+        self.username = name if name != None else ("Host" if is_host else "Client")
+        self.user_id = _id if _id != -1 else get_new_id()
+        self._used_ids = []
 
         # UI handles
         self._editor_notebook = WORKBENCH.get_editor_notebook()
@@ -31,17 +41,15 @@ class Session:
         self._active_editor = self._editor_notebook.get_current_editor().get_text_widget()
 
         # Network handles
-        # self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connection = MqttConnection(self._name, topic = topic)
-        self.network_lock = threading.Lock()
+        self._connection = MqttConnection(self, topic = topic)
+        self._network_lock = threading.Lock()
 
         # client privilage flags
         self.is_host = is_host
         self.is_cohost = is_cohost
 
-        # daemon threads
+        # service threads
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
-        # self.host_thread = threading.Thread(target=self.accept_connections, daemon=True)
 
         # bindings
         WORKBENCH.bind("RemoteChange", self.apply_remote_changes)
@@ -49,15 +57,17 @@ class Session:
             "text": self.bind_events(),
             "cursor": self.bind_cursor_callbacks()
         }
-        
-        # for hosting with sockets
-        # self._max_connections = 5
-        # self.connections = dict()
-
-        # For clients
-        # self.receiver_thread = threading.Thread(target=self.receive, args=(self.socket_lock, ), daemon=True)
-        self.my_id = get_new_id()
         self.initialized = False
+
+        self._debug = debug
+
+    @classmethod
+    def start_for_create(cls):
+        pass
+    
+    @classmethod
+    def start_for_join(cls, id):
+        pass
 
     # For all
     def bind_events(self):
@@ -77,101 +87,60 @@ class Session:
         
         return bind_hash
 
-    # def _cursor_blink(self):
-    #     while True:
-    #         time.sleep(0.5)
-    #         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
+    def _cursor_blink(self):
+        while True:
+            time.sleep(0.5)
+            text_widget = self._editor_notebook.get_current_editor().get_text_widget()
 
-    #         for i in text_widget.tag_names():
-    #             if i != str(self.my_id) and i in self._remote_users:
-    #                 if self._remote_users[i].cursor_colored:
-    #                     text_widget.tag_config(i, background="white")
-    #                     self._remote_users[i].cursor_colored = False
-    #                 else:
-    #                     text_widget.tag_config(i, background=self._remote_users[i].color)
-    #                     self._remote_users[i].cursor_colored = True
+            for i in text_widget.tag_names():
+                if i != str(self.user_id) and i in self._remote_users:
+                    if self._remote_users[i].cursor_colored:
+                        text_widget.tag_config(i, background="white")
+                        self._remote_users[i].cursor_colored = False
+                    else:
+                        text_widget.tag_config(i, background=self._remote_users[i].color)
+                        self._remote_users[i].cursor_colored = True
 
     def send(self, msg = None):
-        # lock.aquire()
         self._connection.publish(msg)
-        # lock.release()
-    
-    # def receive(self, conn):
-    #     sock = self.connections[conn]["socket"] if self.is_host else self._sock
-        
-    #     partial_msg = None
-    #     full_msg_len = 0
-
-    #     while True:
-    #         chunk = sock.recv(MSGLEN)
-
-    #         if chunk == b'':
-    #             print("Connection with", conn, "ended")
-    #             break
-    #         else:
-    #             msg = str(chunk, encoding="utf-8")
-    #             print("received:", msg)
-                 
-    #             if partial_msg == None and len(msg) >= 5 and msg[0 : 5] == "FIRST" and self.initialized == False:
-    #                 full_msg_len = int(msg[msg.find("[") + 1 : msg.find("]")])
-    #                 self.my_id = int(msg[msg.find("(") + 1 : msg.find(")")])
-    #                 partial_msg = msg[msg.find(")") + 1:]
-    #                 print("First msg\nlen:", full_msg_len, "\t id:,", self.my_id, "\n part:\n", partial_msg)
-                    
-    #                 if len(partial_msg) == full_msg_len:
-    #                     if len(partial_msg) > 0:
-    #                         WORKBENCH.event_generate("RemoteChange", change="I[0.0]" + partial_msg)
-    #                         print("I[0.0]" + partial_msg)
-    #                     partial_msg = None
-    #                     full_msg_len = 0
-    #                     self.initialized = True
-                
-    #             if partial_msg == None:
-    #                 WORKBENCH.event_generate("RemoteChange", change=msg)
-    #                 print("Pushed -%s- to queue" % msg)
-    #             else:
-    #                 partial_msg += msg
-    #                 print("part:\n", partial_msg)
-    #                 if len(partial_msg) == full_msg_len:
-    #                     WORKBENCH.event_generate("RemoteChange", change="I[0.0]" + partial_msg)
-    #                     print("I[0.0]" + partial_msg)
-    #                     partial_msg = None
-    #                     full_msg_len = 0
-    #                     self.initialized = True
     
     def boradcast_cursor_motion(self, event):
         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
-        instr = "M(" + str(self.my_id) + "|" + text_widget.index(tk.INSERT) + ")"
+        instr = "M(" + str(self.user_id) + "|" + text_widget.index(tk.INSERT) + ")"
         self.send(instr)
     
     def broadcast_insert(self, event):
-        instr = get_instr_v2(event, True, user_id = self.my_id)
+        instr = get_instr_v2(event, True, user_id = self.user_id)
 
         if instr == None:
             return
 
-        print("*****************\nSending: %s\n*****************" % instr)
+        if self._debug:
+            print("*****************\nSending: %s\n*****************" % instr)
         self.send(instr)
 
     def broadcast_delete(self, event):
-        instr = get_instr_v2(event, False, user_id = self.my_id)
+        instr = get_instr_v2(event, False, user_id = self.user_id)
 
         if instr == None:
             return
         
-        print("*****************\nSending: %s\n*****************" % instr)
+        if self._debug:
+            print("*****************\nSending: %s\n*****************" % instr)
+        
         self.send(instr)
 
     def broadcast_keypress(self, event):
         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
         
-        instr = get_instruction(event, text_widget, self.my_id, 
+        instr = get_instruction(event, text_widget, self.user_id, 
                                 text_widget.index(tk.INSERT), False)
         
         if instr == None:
             return
 
-        print("in broadcast: -%s-" % instr)
+        if self._debug:
+            print("in broadcast: -%s-" % instr)
 
         self.send(instr)
     
@@ -201,7 +170,9 @@ class Session:
         msg = event.change
         
         codeview = self._editor_notebook.get_current_editor().get_text_widget()
-        print("command: %s" % msg)
+    
+        if self._debug:
+            print("command: %s" % msg)
         
         if msg[0] in ("I", "D", "R", "T", "M"):
             position = msg[msg.find("[") + 1 : msg.find("]")]
@@ -254,71 +225,8 @@ class Session:
             text_widget.tag_configure(user_id, background=color)
 
     def start_session(self):
-        # if self.is_host:
-        #     self.host_thread.start()
-        # else:
-        #     while True:
-        #         try:
-                    
-        #             break
-        #         except:
-        #             print("connection failed... pinging again in 2 secs")
-        #             time.sleep(2)
-            
-        #     self.receiver_thread.start()
         self._connection.Connect()
         self._connection.loop_start()
-    # for host
-    # def broadcast_host(self, instr):
-    #     if instr:
-    #         for conn in self.connections:
-    #             sock = self.connections[conn]["socket"]
-    #             lock = self.connections[conn]["lock"]
-    #             self.send(instr)
-    
-    # def accept_connections(self):
-    #     self._sock.bind(SOCK_ADDR)
-    #     self._sock.listen(self._max_connections)
-        
-    #     while True:
-    #         client, add = self._sock.accept()
-    #         print("New connection at:", add)
-
-    #         handler_lock = threading.Lock()
-    #         handler_thread = threading.Thread(target=self.receive, args=(add, ))
-    #         author_id = get_new_id()
-
-    #         new_user = RemoteUser(author_id, "", random.sample(USER_COLORS, 1))
-
-    #         self.connections[add] = {"author_id": author_id,
-    #                                  "handler_thread" : handler_thread,
-    #                                  "lock" : handler_lock,
-    #                                  "socket": client}
-
-    #         self.send_current_state(author_id, add)
-    #         self._remote_users[str(author_id)] = new_user
-    #         handler_thread.start()
-            
-    #         print("Users:\n", self._remote_users)
-        
-    # def send_current_state(self, user_id, conn):
-    #     sock = self.connections[conn]["socket"]
-    #     lock = self.connections[conn]["lock"]
-    #     text_widget = self._editor_notebook.get_current_editor().get_text_widget()
-
-    #     full_text = text_widget.get("0.0", tk.END)
-    #     if full_text == "\n":
-    #         full_text = ""
-    #     msg = "FIRST[" + str(len(full_text)) + "]" + \
-    #                "(" + str(user_id) + ")" + full_text
-
-    #     lock.acquire()
-    #     sock.sendall(bytes(msg, encoding="utf-8"))
-    #     lock.release()
-    
-    # def send_active_users(self, user_list, lock, sock):
-    #     list_json = json.dumps(user_list)
-    #     self.send(sock, lock, list_json)
 
 if __name__ == "__main__":
     sess = Session(sys.argv[1] == "host" if len(sys.argv) > 1 else False)

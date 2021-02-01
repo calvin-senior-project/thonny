@@ -12,26 +12,45 @@ BROKER_URLS = [
     "test.mosquitto.org"
 ]
 
-# Callback when a message is published
-def publish_callback(client, userdata, mid):
-    print("sent")
-    #do something
+USER_COLORS = [
+    "blue", 
+    "green", 
+    "red", 
+    "pink", 
+    "orange",
+    "black",
+    "white",
+    "purple"
+]
 
-# Callback when connecting to the MQTT broker
-def connect_callback(client, userdata, flags, rc):
-    if rc==0:
-        print('Connected to ' + client.broker)
-        #do something
+def topic_exists(s):
+    # TODO: complete
+    return False
 
-# Callback when client receives a PUBLISH message from the broker
-def message_callback(client, data, msg):
-    if msg.topic == client.topic:
-        print(msg.payload.decode("utf-8"))
-        WORKBENCH.event_generate("RemoteChange", change=msg.payload.decode("utf-8"))
+def generate_topic():
+    # TODO: complete
+    existing_names = set()
+
+    while True:
+        name = "_".join([USER_COLORS[random.randint(0, len(USER_COLORS) - 1)] for _ in range(4)])
+        name += ":" + "".join([str(random.randint(0, 9)) for _ in range(4)])
+
+        if name in existing_names:
+            continue
+
+        if topic_exists(name):
+            print("Topic %s is taken. Trying another random name..." % repr(name))
+            existing_names.add(name)
+        else:
+            return name
+
+def get_sender_id(instr):
+    # TODO: Update to work with json
+    return int(instr[instr.find("(") + 1 : instr.find("|")])
 
 class MqttConnection(mqtt.Client):
     def __init__(self, 
-                 session_name, 
+                 session,
                  broker_url = None, 
                  port = None, 
                  qos = 0, 
@@ -41,21 +60,18 @@ class MqttConnection(mqtt.Client):
                  on_publish = None,
                  on_connect = None):
         mqtt.Client.__init__(self)
+        self.session = session
         self.broker = broker_url or self.get_default_broker()
         self.port = port or self.get_port()
         self.qos = qos
         self.delay = delay
-        self.topic = topic or self.get_topic(session_name)
+        self.topic = topic
         
         if topic == None:
             print("New Topic: %s" % self.topic)
         else:
             print("Existing topic: %s" % self.topic)
 
-        self.on_connect = on_connect or connect_callback
-        self.on_message = on_message or message_callback
-        self.on_publish = on_publish or publish_callback
-    
     def get_port(self):
         return 1883
     
@@ -74,20 +90,22 @@ class MqttConnection(mqtt.Client):
     def test_broker(self, url):
         # TODO: add broker test
         return True
-    
-    def on_publish(self, userdata, mid):
-        print("sent")
-        #do something
 
     # Callback when connecting to the MQTT broker
-    def on_connect(self, userdata, flags, rc):
-        if rc==0:
-            print('Connected to ' + self.broker)
+    # def on_connect(self, userdata, flags, rc):
+    #     if rc==0:
+    #         print('Connected to ' + self.broker)
 
     def on_message(self, client, data, msg):
+        instr = msg.payload.decode("utf-8")
+
+        if get_sender_id(instr) == self.session.user_id:
+            print("instr ignored")
+            return
+
         if msg.topic == self.topic:
-            print(msg.payload.decode("utf-8"))
-            WORKBENCH.event_generate("RemoteChange", change=msg.payload.decode("utf-8"))
+            print(instr)
+            WORKBENCH.event_generate("RemoteChange", change=instr)
     
     def publish(self, msg):
         mqtt.Client.publish(self, self.topic, msg)
@@ -95,14 +113,27 @@ class MqttConnection(mqtt.Client):
     def Connect(self):
         mqtt.Client.connect(self, self.broker, self.port, 60)
         mqtt.Client.subscribe(self, self.topic, qos=self.qos)
+    
+    def get_sender(self, msg):
+        pass
 
 if __name__ == "__main__":
-    myConnection = MqttConnection("John_Doe")
-    myConnection.connect()
+    import sys
+
+    class Session_temp:
+        def __init__(self, name = "John Doe", _id = 0):
+            self.username = name
+            self.user_id = _id
+    
+    x = Session_temp() if len(sys.argv) > 1 else Session_temp(_id = int(sys.argv[1]))
+    myConnection = MqttConnection(x)
+    myConnection.Connect()
     myConnection.loop_start()
 
-    try:
-        myConnection.publish("testing ")
-    except KeyboardInterrupt:
-        print("Done")
-        myConnection.disconnect()
+    while True:
+        x = input("Type")
+        try:
+            myConnection.publish("testing ")
+        except KeyboardInterrupt:
+            print("Done")
+            myConnection.disconnect()
