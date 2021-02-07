@@ -40,24 +40,36 @@ def start_session():
     return (top.get_session_mode(), 0)
 
 def toolbar_callback():
-    global session
-    if session != None:
-        session.end()
-        if DEBUG:
-            print("Session end flag set")
-        session = None
-    else:
-        session_type, code = start_session()
-        if DEBUG:
-            print("session type: %s\tcode: %d" % (session_type, code))
+    # global session
+    # if session != None:
+    #     session.end()
+    #     if DEBUG:
+    #         print("Session end flag set")
+    #     session = None
+    # else:
+    #     session_type, code = start_session()
+    #     if DEBUG:
+    #         print("session type: %s\tcode: %d" % (session_type, code))
 
+    for x in WORKBENCH.get_editor_notebook().winfo_children():
+        print("--------------\n file name: %s\n title: %s\n--------------" % (x.get_filename(), x.get_title()))
+
+    # widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
+    # widget.insert = types.MethodType(pc.patched_insert, widget)
+    # widget.delete = types.MethodType(pc.patched_delete, widget) 
+
+def create_session():
+    
+    top = CreateSessionDialog(WORKBENCH)
+    WORKBENCH.wait_window(top)
+
+    #  if top data is none, then the user chose to cancel the session
+    if top.data == None:
+        return
+    
     widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
     widget.insert = types.MethodType(pc.patched_insert, widget)
     widget.delete = types.MethodType(pc.patched_delete, widget) 
-
-def create_session():
-    top = CreateSessionDialog(WORKBENCH)
-    WORKBENCH.wait_window(top)
 
     session = Session(name = top.data["name"],
                       topic = top.data["topic"],
@@ -69,8 +81,13 @@ def join_session():
     top = JoinSessionDialog(WORKBENCH)
     WORKBENCH.wait_window(top)
 
+    widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
+    widget.insert = types.MethodType(pc.patched_insert, widget)
+    widget.delete = types.MethodType(pc.patched_delete, widget) 
+
     session = Session(name = top.data["name"],
-                      topic = top.data["topic"])
+                      topic = top.data["topic"],
+                      _id = 1)
     session.start_session()
 
 def end_session():
@@ -146,5 +163,5 @@ def load_plugin():
                           caption = "End",
                           bell_when_denied = True)
 
-    SyntaxText.insert = pc.patched_insert
-    SyntaxText.delete = pc.patched_delete
+    EnhancedText.insert = pc.patched_insert
+    EnhancedText.delete = pc.patched_delete

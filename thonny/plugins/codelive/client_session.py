@@ -17,13 +17,10 @@ class ClientSession(Session):
         self.receiver_thread = threading.Thread(target=self.receive, args=(self.socket_lock, ), daemon=True)
     
     def bind_keypress(self):
-        codeview = self._editor_notebook.get_current_editor().get_text_widget()
+        text_widget = self._editor_notebook.get_current_editor().get_text_widget()
 
-        return [codeview.bind("<KeyPress>", self.broadcast_keypress, True),
-                WORKBENCH.bind("<Return>", self.broadcast_keypress, True)] #self._active_editor.bind("<KeyPress>", self.broadcast_keypress, True), ]# \
-                # self._active_editor.bind("<BackSpace>", self.broadcast_keypress, True), \
-                # self._active_editor.bind("<Return>", self.broadcast_keypress, True), \
-                # self._active_editor.bind("<Tab>", self.broadcast_keypress, True)]
+        return [text_widget.bind("<KeyPress>", self.broadcast_keypress, True),
+                WORKBENCH.bind("<Return>", self.broadcast_keypress, True)]
 
     def broadcast_keypress(self, event):
         # codeview = self._editor_notebook.get_current_editor().get_text_widget()
