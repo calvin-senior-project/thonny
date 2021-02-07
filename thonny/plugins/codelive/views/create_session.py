@@ -53,7 +53,7 @@ class EditorSelector(ttk.Frame):
                                  yscrollcommand = scrollbar.set,
                                  height = 7,
                                  width = 60,
-                                 selectmode = tk.MULTIPLE + tk.EXTENDED)
+                                 selectmode = tk.MULTIPLE)
         scrollbar.configure(command = list_widget.yview)
 
         self.check_state = tk.IntVar()
@@ -96,6 +96,7 @@ class CreateSessionDialog(tk.Toplevel):
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent)
         self.protocol("WM_DELETE_WINDOW", self.cancel_callback)
+        self.title("Create Live Session")
 
         frame = ttk.Frame(self)
 
@@ -108,10 +109,10 @@ class CreateSessionDialog(tk.Toplevel):
         form_frame = ttk.Frame(frame, width = 50)
 
         name_label = ttk.Label(form_frame, text = "Your alias")
-        self.name_input = tk.Text(form_frame, height= 1, width = 50, bd = 5)
+        self.name_input = tk.Text(form_frame, height= 1, width = 50)
 
         session_topic_label = ttk.Label(form_frame, text = "Session Topic")
-        self.topic_input = tk.Text(form_frame, height= 1, width = 50, bd = 5)
+        self.topic_input = tk.Text(form_frame, height= 1, width = 50)
 
         self.auto_gen_topic_state = tk.IntVar()
         self.auto_generate_check = ttk.Checkbutton(form_frame, 
@@ -227,35 +228,38 @@ class CreateSessionDialog(tk.Toplevel):
             print("gen-ed:", n)
             tk.Text.delete(self.topic_input, "0.0", "end")
             tk.Text.insert(self.topic_input, "0.0", n)
-            self.topic_input.configure(background = "#DDDDDD")
+            self.topic_input.configure(background = "#EEEEEE")
             self.topic_input["state"] = tk.DISABLED
     
     def valid_name(self, s):
         if len(s) < 8:
-            tk.messagebox.askokcancel(parent = self,
-                                     title = "Name Error",
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
                                      message = "Please provide a name at least 8 characters long.")
-        return False
+            return False
+        return True
     
     def valid_topic(self, s):
-        if len(s) < 8:
-            tk.messagebox.askokcancel(parent = self,
-                                     title = "Topic Error",
+        if len(s) < 12:
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
                                      message = "Please provide a unique topic with more than 12 characters.")
+            return False
         
         if topic_exists(s):
-            tk.messagebox.askokcancel(parent = self,
-                                     title = "Topic Error",
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
                                      message = "Your topic is already taken! Please provide a unique topic with more than 12 characters.")
-        return False
+            return False
+        return True
     
     def valid_selection(self):
         if self.editor_selector.none_selected():
-            tk.messagebox.askokcancel(parent = self,
-                                     title = "Editor",
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
                                      message = "Please select at least one editor that would be shared during your session.")
-
-        return  False
+            return False
+        return  True
 
 if __name__ == "__main__":
     root = tk.Tk()
