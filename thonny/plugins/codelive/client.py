@@ -1,19 +1,21 @@
-import socket
-import tkinter as tk
-import re
-import queue
-import os
-import time
-import threading
-import json
-import random
 import copy
+import json
+import os
+import queue
+import random
+import re
 import sys
+import threading
+import time
+import tkinter as tk
+import types
 
+from thonny import get_workbench
+from thonny.tktextext import EnhancedText
+import thonny.plugins.codelive.patched_callbacks as pc
 from thonny.plugins.codelive.mqtt_connection import MqttConnection
 from thonny.plugins.codelive.utils import get_instruction, get_instr_v2, get_new_id, free_id
 from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS
-from thonny import get_workbench
 
 MSGLEN = 2048
 SOCK_ADDR = ('localhost', 8000)
@@ -58,17 +60,27 @@ class Session:
             "cursor": self.bind_cursor_callbacks()
         }
         self.initialized = False
+        
+        self._default_insert = None
+        self._defualt_delete = None
 
         self._debug = debug
 
-    @classmethod
-    def start_for_create(cls):
-        pass
-    
-    @classmethod
-    def start_for_join(cls, id):
-        pass
+        self.replace_insert_delete()
 
+    def replace_insert_delete(self):
+        defn_saved = False
+
+        for editor in self._shared_editors:
+            if not defn_saved:
+                self._default_insert = widget.insert
+                self._default_delete = widget.delete
+                defn_saved = True
+            
+            widget = editor.get_text_widget()
+            widget.insert = types.MethodType(pc.patched_insert, widget)
+            widget.delete = types.MethodType(pc.patched_delete, widget)
+    
     # For all
     def bind_events(self):
         '''

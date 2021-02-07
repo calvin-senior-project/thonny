@@ -88,6 +88,9 @@ class EditorSelector(ttk.Frame):
     
     def get_shared_editors(self):
         return (self.active_editors[index] for index in self.editor_list.curselection())
+    
+    def none_selected(self):
+        return len(self.editor_list.curselection()) == 0
 
 class CreateSessionDialog(tk.Toplevel):
     def __init__(self, parent):
@@ -118,9 +121,6 @@ class CreateSessionDialog(tk.Toplevel):
                                                    onvalue = 1,
                                                    offvalue = 0)
 
-        self.name_input.bind("<KeyPress>", self.allow_start_name, True)
-        self.topic_input.bind("<KeyPress>", self.allow_start_topic, True)
-
         name_label.grid(row = 0, column = 0, sticky = tk.E)
         self.name_input.grid(row = 0, column = 1, sticky = tk.W, padx = 10, pady = 5)
         
@@ -141,7 +141,6 @@ class CreateSessionDialog(tk.Toplevel):
                                   command=self.start_callback,
                                   fg = "green",
                                   width = 10)
-        self.start_button["state"] = tk.DISABLED
 
         cancel_button = tk.Button(button_frame,
                                   text="Cancel",
@@ -155,9 +154,9 @@ class CreateSessionDialog(tk.Toplevel):
         Intro.pack(expand=True, padx = 10, pady = 5)
         form_frame.pack(side = tk.TOP, expand = False, padx = 10, pady=5)
         
-        sep1.pack(side = tk.TOP, fill = tk.X, expand= True)
+        sep1.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 20)
         self.editor_selector.pack(side = tk.TOP, fill = tk.BOTH)
-        sep2.pack(side = tk.TOP, fill = tk.X, expand= True)
+        sep2.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 20)
         
         button_frame.pack(side = tk.BOTTOM, padx = 10, pady=5)
         frame.pack(fill = tk.BOTH, expand = True)
@@ -221,21 +220,41 @@ class CreateSessionDialog(tk.Toplevel):
         # on uncheck
         if self.auto_gen_topic_state.get() == 0:
             self.topic_input["state"] = tk.NORMAL
+            self.topic_input.configure(background = "white")
         # on check
         else:
             n = generate_topic()
             print("gen-ed:", n)
             tk.Text.delete(self.topic_input, "0.0", "end")
             tk.Text.insert(self.topic_input, "0.0", n)
+            self.topic_input.configure(background = "#DDDDDD")
             self.topic_input["state"] = tk.DISABLED
     
     def valid_name(self, s):
+        if len(s) < 8:
+            tk.messagebox.askokcancel(parent = self,
+                                     title = "Name Error",
+                                     message = "Please provide a name at least 8 characters long.")
         return False
     
     def valid_topic(self, s):
+        if len(s) < 8:
+            tk.messagebox.askokcancel(parent = self,
+                                     title = "Topic Error",
+                                     message = "Please provide a unique topic with more than 12 characters.")
+        
+        if topic_exists(s):
+            tk.messagebox.askokcancel(parent = self,
+                                     title = "Topic Error",
+                                     message = "Your topic is already taken! Please provide a unique topic with more than 12 characters.")
         return False
     
     def valid_selection(self):
+        if self.editor_selector.none_selected():
+            tk.messagebox.askokcancel(parent = self,
+                                     title = "Editor",
+                                     message = "Please select at least one editor that would be shared during your session.")
+
         return  False
 
 if __name__ == "__main__":
