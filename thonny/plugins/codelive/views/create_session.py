@@ -4,6 +4,7 @@ from tkinter import ttk
 from thonny import get_workbench
 from thonny.plugins.codelive.mqtt_connection import generate_topic, topic_exists
 
+# For testing only!!!!!
 if __name__ == "__main__":
     class DummyEditor:
         def __init__(self, title = "untitled", filename = None):
@@ -20,30 +21,51 @@ class EditorSelector(ttk.Frame):
     def __init__(self, parent, active_editors):
         ttk.Frame.__init__(self, parent)
         self.active_editors = active_editors
-
+        
         label = ttk.Label(self, 
                           text = "Please choose the editors you want to share")
         
-        container, self.editorList = self.get_list()
-
-        self.editorList.bind("<<ListboxSelect>>", self.some_binding)
+        container, self.editor_list = self.get_list()
+        self.editor_list.bind("<<ListboxSelect>>", self.some_binding)
 
         label.pack(side = tk.TOP)
         container.pack(side = tk.BOTTOM)
 
     def some_binding(self, event):
         pass 
+    
+    def on_select_all(self):
+        # on uncheck
+        if self.check_state.get() == 0:
+            self.editor_list.selection_clear(0, self.editor_list.size() - 1)
+            self.check_label.set("Select All")
+        #on check
+        else:
+            self.editor_list.selection_set(0, self.editor_list.size() - 1)
+            self.check_label.set("Unselect All")
 
     def get_list(self):
         container = ttk.Frame(self)
+        sub_container = ttk.Frame(container)
 
-        scrollbar = tk.Scrollbar(container)
-        list_widget = tk.Listbox(container,
+        scrollbar = tk.Scrollbar(sub_container)
+        list_widget = tk.Listbox(sub_container,
                                  yscrollcommand = scrollbar.set,
                                  height = 7,
                                  width = 60,
                                  selectmode = tk.MULTIPLE + tk.EXTENDED)
         scrollbar.configure(command = list_widget.yview)
+
+        self.check_state = tk.IntVar()
+        self.check_label = tk.StringVar()
+        self.check_label.set("Select All")
+
+        self.select_all_check = ttk.Checkbutton(container,
+                                           command = self.on_select_all,
+                                           textvariable = self.check_label,
+                                           variable = self.check_state,
+                                           onvalue = 1,
+                                           offvalue = 0)
 
         for item in self.active_editors:
             editor = self.active_editors[item]
@@ -58,8 +80,14 @@ class EditorSelector(ttk.Frame):
 
         list_widget.pack(side = tk.LEFT, fill = tk.BOTH, expand = True)
         scrollbar.pack(side = tk.RIGHT, fill = tk.BOTH, expand = True)
+        sub_container.pack(side = tk.TOP, fill = tk.BOTH, expand = True)
 
+        self.select_all_check.pack(side = tk.LEFT)
+        
         return container, list_widget
+    
+    def get_shared_editors(self):
+        return (self.active_editors[index] for index in self.editor_list.curselection())
 
 class CreateSessionDialog(tk.Toplevel):
     def __init__(self, parent):
@@ -84,11 +112,11 @@ class CreateSessionDialog(tk.Toplevel):
 
         self.auto_gen_topic_state = tk.IntVar()
         self.auto_generate_check = ttk.Checkbutton(form_frame, 
-                                                  text = "Auto-generate", 
-                                                  command = self.auto_gen_callback,
-                                                  variable = self.auto_gen_topic_state,
-                                                  onvalue = 1,
-                                                  offvalue = 0)
+                                                   text = "Auto-generate", 
+                                                   command = self.auto_gen_callback,
+                                                   variable = self.auto_gen_topic_state,
+                                                   onvalue = 1,
+                                                   offvalue = 0)
 
         self.name_input.bind("<KeyPress>", self.allow_start_name, True)
         self.topic_input.bind("<KeyPress>", self.allow_start_topic, True)
@@ -146,8 +174,8 @@ class CreateSessionDialog(tk.Toplevel):
         parent_x = int(parent_x)
         parent_y = int(parent_y)
 
-        w = 650 # self.winfo_reqwidth()
-        h = 300 # self.winfo_reqheight()
+        w = 650
+        h = 325
 
         x = parent_x + (parent_w - w) / 2
         y = parent_y + (parent_h - h) / 2
@@ -170,49 +198,17 @@ class CreateSessionDialog(tk.Toplevel):
 
         return editors
 
-    def allow_start_name(self, event):
-        name = self.name_input.get("0.0", "end")
-        topic = self.topic_input.get("0.0", "end")
-
-        if len(topic.strip()) == 0:
-            print("disabling")
-            self.start_button["state"] = tk.DISABLED
-        else:
-            if event.keysym == "BackSpace" and len(name.strip()) == 1:
-                print("disabling")
-                self.start_button["state"] = tk.DISABLED
-            else:
-                print("enabling")
-                self.start_button["state"] = tk.NORMAL
-    
-    def allow_start_topic(self, event):
-        name = self.name_input.get("0.0", "end")
-        topic = self.topic_input.get("0.0", "end")
-
-        if len(name.strip()) == 0:
-            print("disabling")
-            self.start_button["state"] = tk.DISABLED
-        
-        else:
-            if event.keysym == "BackSpace" and len(topic.strip()) == 1:
-                print("disabling")
-                self.start_button["state"] = tk.DISABLED
-            else:
-                print("enabling")
-                self.start_button["state"] = tk.NORMAL
-
     def start_callback(self):
         name = self.name_input.get("0.0", "end").strip()
         topic = self.topic_input.get("0.0", "end").strip()
 
-        if topic_exists(topic):
-            # TODO: if the topic exists
-            pass
-        else:
-            # Check if there's an existing session with a similar name
+        if self.valid_name(name) and self.valid_topic(name) and self.valid_selection():
             self.data["name"] = name
             self.data["topic"] = topic
+            self.data["shared_editors"] = self.editor_selector.get_shared_editors()
+
             self.destroy()
+            
 
     def cancel_callback(self):
         if tk.messagebox.askokcancel(parent = self,
@@ -222,15 +218,25 @@ class CreateSessionDialog(tk.Toplevel):
             self.destroy()
     
     def auto_gen_callback(self):
-        print("exx: ", self.auto_gen_topic_state.get())
+        # on uncheck
         if self.auto_gen_topic_state.get() == 0:
             self.topic_input["state"] = tk.NORMAL
+        # on check
         else:
             n = generate_topic()
             print("gen-ed:", n)
             tk.Text.delete(self.topic_input, "0.0", "end")
             tk.Text.insert(self.topic_input, "0.0", n)
             self.topic_input["state"] = tk.DISABLED
+    
+    def valid_name(self, s):
+        return False
+    
+    def valid_topic(self, s):
+        return False
+    
+    def valid_selection(self):
+        return  False
 
 if __name__ == "__main__":
     root = tk.Tk()
