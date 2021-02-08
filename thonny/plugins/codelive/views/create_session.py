@@ -137,7 +137,7 @@ class CreateSessionDialog(tk.Toplevel):
         # Bottom Button Frame
         button_frame = ttk.Frame(frame)
 
-        self.start_button = tk.Button(button_frame,
+        start_button = tk.Button(button_frame,
                                   text="Start!",
                                   command=self.start_callback,
                                   fg = "green",
@@ -149,25 +149,25 @@ class CreateSessionDialog(tk.Toplevel):
                                   fg = "red",
                                   width = 10)
         
-        self.start_button.pack(side=tk.RIGHT, fill=tk.X, expand = True, padx = 5)
+        start_button.pack(side=tk.RIGHT, fill=tk.X, expand = True, padx = 5)
         cancel_button.pack(side=tk.LEFT, fill=tk.X, expand = True, padx = 5)
 
         Intro.pack(expand=True, padx = 10, pady = 5)
         form_frame.pack(side = tk.TOP, expand = False, padx = 10, pady=5)
         
         sep1.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 20)
+        
         self.editor_selector.pack(side = tk.TOP, fill = tk.BOTH)
+        
         sep2.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 20)
         
         button_frame.pack(side = tk.BOTTOM, padx = 10, pady=5)
+        
         frame.pack(fill = tk.BOTH, expand = True)
 
         self.center(parent.winfo_geometry())
 
     def center(self, parent_geo):
-        # TODO: center the top level window
-        print(parent_geo)
-        
         parent_dim, parent_x, parent_y = parent_geo.split("+")
         parent_w, parent_h = [int(l) for l in parent_dim.split("x")]
 
@@ -181,7 +181,6 @@ class CreateSessionDialog(tk.Toplevel):
         y = parent_y + (parent_h - h) / 2
 
         self.geometry("%dx%d+%d+%d" % (w, h, x, y))
-        pass
 
     def get_active_editors(self, parent):
         editors = dict()

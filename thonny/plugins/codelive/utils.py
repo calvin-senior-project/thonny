@@ -119,3 +119,5 @@ def publish_insert(broadcast_widget, source, cursor_after_change, index, text):
                                     text_widget = source,
                                     cursor_after_change = cursor_after_change)
 
+def intiialize_documents(doc_list):
+    return []

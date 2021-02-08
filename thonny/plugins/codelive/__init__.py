@@ -63,28 +63,29 @@ def create_session():
     top = CreateSessionDialog(WORKBENCH)
     WORKBENCH.wait_window(top)
 
-    #  if top data is none, then the user chose to cancel the session
+    # if top data is none, then the user chose to cancel the session
     if top.data == None:
         return
 
-    session = Session(name = top.data["name"],
-                      topic = top.data["topic"],
-                      is_host = True,
-                      shared_editors = top.data["shared_editors"])
-
+    session = Session.create_session(name = top.data["name"],
+                                     topic = top.data["topic"],
+                                     broker = top.data["broker"],
+                                     shared_editors = top.data["shared_editors"])
+    
     session.start_session()
 
 def join_session():
     top = JoinSessionDialog(WORKBENCH)
     WORKBENCH.wait_window(top)
 
-    widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
-    widget.insert = types.MethodType(pc.patched_insert, widget)
-    widget.delete = types.MethodType(pc.patched_delete, widget) 
+    #  if top data is none, then the user chose to cancel the session
+    if top.data == None:
+        return
 
-    session = Session(name = top.data["name"],
-                      topic = top.data["topic"],
-                      _id = 1)
+    session = Session.join_session(name = top.data["name"],
+                                   topic = top.data["topic"],
+                                   broker = top.data["broker"])
+
     session.start_session()
 
 def end_session():

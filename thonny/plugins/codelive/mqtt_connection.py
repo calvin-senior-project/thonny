@@ -48,10 +48,23 @@ def get_sender_id(instr):
     # TODO: Update to work with json
     return int(instr[instr.find("(") + 1 : instr.find("|")])
 
+def test_broker(self):
+    # TODO: add broker test
+    return True
+
+def get_default_broker():
+    global BROKER_URLS
+
+    for broker in BROKER_URLS:
+        if test_broker(broker):
+            return broker
+
+    return None
+
 class MqttConnection(mqtt.Client):
     def __init__(self, 
                  session,
-                 broker_url = None, 
+                 broker_url, 
                  port = None, 
                  qos = 0, 
                  delay = 1.0, 
@@ -61,7 +74,7 @@ class MqttConnection(mqtt.Client):
                  on_connect = None):
         mqtt.Client.__init__(self)
         self.session = session
-        self.broker = broker_url or self.get_default_broker()
+        self.broker = broker_url 
         self.port = port or self.get_port()
         self.qos = qos
         self.delay = delay
@@ -72,24 +85,15 @@ class MqttConnection(mqtt.Client):
         else:
             print("Existing topic: %s" % self.topic)
 
+    @classmethod
+    def handshake(cls, name, topic, broker):
+        pass
+    
     def get_port(self):
         return 1883
     
     def get_topic(self, name):
         return name# + "_" + ''.join(random.choice(string.ascii_uppercase) for i in range(6))
-
-    def get_default_broker(self):
-        global BROKER_URLS
-
-        for broker in BROKER_URLS:
-            if self.test_broker(broker):
-                return broker
-
-        return None
-
-    def test_broker(self, url):
-        # TODO: add broker test
-        return True
 
     # Callback when connecting to the MQTT broker
     # def on_connect(self, userdata, flags, rc):
@@ -126,7 +130,7 @@ if __name__ == "__main__":
             self.user_id = _id
     
     x = Session_temp() if len(sys.argv) > 1 else Session_temp(_id = int(sys.argv[1]))
-    myConnection = MqttConnection(x)
+    myConnection = MqttConnection(x, get_default_broker())
     myConnection.Connect()
     myConnection.loop_start()
 

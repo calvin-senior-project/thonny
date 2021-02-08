@@ -13,8 +13,8 @@ import types
 from thonny import get_workbench
 from thonny.tktextext import EnhancedText
 import thonny.plugins.codelive.patched_callbacks as pc
-from thonny.plugins.codelive.mqtt_connection import MqttConnection
-from thonny.plugins.codelive.utils import get_instruction, get_instr_v2, get_new_id, free_id
+import thonny.plugins.codelive.mqtt_connection as cmqtt
+import thonny.plugins.codelive.utils as utils
 from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS
 
 MSGLEN = 2048
@@ -27,6 +27,7 @@ class Session:
                  _id = -1,
                  name = None,
                  topic = None,
+                 broker = None,
                  shared_editors = None,
                  is_host = False,
                  is_cohost = False,
@@ -34,7 +35,7 @@ class Session:
 
         self._remote_users = dict()
         self.username = name if name != None else ("Host" if is_host else "Client")
-        self.user_id = _id if _id != -1 else get_new_id()
+        self.user_id = _id if _id != -1 else utils.get_new_id()
         self._used_ids = []
 
         # UI handles
@@ -43,7 +44,7 @@ class Session:
         self._active_editor = self._editor_notebook.get_current_editor().get_text_widget()
 
         # Network handles
-        self._connection = MqttConnection(self, topic = topic)
+        self._connection = cmqtt.MqttConnection(self, broker_url=broker, topic = topic)
         self._network_lock = threading.Lock()
 
         # client privilage flags
@@ -67,6 +68,27 @@ class Session:
         self._debug = debug
 
         self.replace_insert_delete()
+
+    @classmethod
+    def create_session(cls, name, topic, broker = None, shared_editors = None, debug = False):
+        return Session(_id = utils.get_new_id(),
+                       name = name,
+                       topic = topic,
+                       broker = broker or cmqtt.get_default_broker(),
+                       shared_editors = shared_editors,
+                       is_host = True)
+
+    @classmethod
+    def join_session(cls, name, topic, broker, debug = False):
+        current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
+        shared_editors = utils.intiialize_documents(current_state["docs"])
+        
+        return Session(_id = current_state["id"],
+                       name = current_state["name"],
+                       topic = topic,
+                       broker = broker,
+                       shared_editors = shared_editors,
+                       is_host = current_state["is_cohost"])
 
     def replace_insert_delete(self):
         defn_saved = False
@@ -122,7 +144,7 @@ class Session:
         self.send(instr)
     
     def broadcast_insert(self, event):
-        instr = get_instr_v2(event, True, user_id = self.user_id)
+        instr = utils.get_instr_v2(event, True, user_id = self.user_id)
 
         if instr == None:
             return
@@ -132,7 +154,7 @@ class Session:
         self.send(instr)
 
     def broadcast_delete(self, event):
-        instr = get_instr_v2(event, False, user_id = self.user_id)
+        instr = utils.get_instr_v2(event, False, user_id = self.user_id)
 
         if instr == None:
             return
@@ -145,7 +167,7 @@ class Session:
     def broadcast_keypress(self, event):
         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
         
-        instr = get_instruction(event, text_widget, self.user_id, 
+        instr = utils.get_instruction(event, text_widget, self.user_id, 
                                 text_widget.index(tk.INSERT), False)
         
         if instr == None:
