@@ -9,7 +9,11 @@ from thonny import get_workbench
 WORKBENCH = get_workbench()
 
 BROKER_URLS = [
-    "test.mosquitto.org"
+    "test.mosquitto.org",
+    "mqtt.eclipse.org",
+    "broker.hivemq.com",
+    "mqtt.fluux.io",
+    "broker.emqx.io"
 ]
 
 USER_COLORS = [
@@ -48,10 +52,15 @@ def get_sender_id(instr):
     # TODO: Update to work with json
     return int(instr[instr.find("(") + 1 : instr.find("|")])
 
-def test_broker(self):
-    # TODO: add broker test
-    return True
-
+def test_broker(url):
+    client = mqtt.Client()
+    try:
+        #it seems as if keepalive only takes integers
+        client.connect(url, 1883, 1)
+        return True
+    except Exception: 
+        return False 
+    
 def get_default_broker():
     global BROKER_URLS
 
@@ -60,6 +69,12 @@ def get_default_broker():
             return broker
 
     return None
+
+def assign_broker(broker_url = None):
+    if test_broker(broker_url):
+        return broker_url
+    else:
+        return get_default_broker()
 
 class MqttConnection(mqtt.Client):
     def __init__(self, 
@@ -74,11 +89,13 @@ class MqttConnection(mqtt.Client):
                  on_connect = None):
         mqtt.Client.__init__(self)
         self.session = session
-        self.broker = broker_url 
+        self.broker = assign_broker(broker_url) #TODO: Handle assign_broker returning none
         self.port = port or self.get_port()
         self.qos = qos
         self.delay = delay
-        self.topic = topic
+        #TODO: Intergrate get_topic, @Sam not sure what you wanted to do with the name param
+        #    program currently fails if not supplied a topic
+        self.topic = topic 
         
         if topic == None:
             print("New Topic: %s" % self.topic)
@@ -148,7 +165,8 @@ if __name__ == "__main__":
             self.user_id = _id
     
     x = Session_temp() if len(sys.argv) > 1 else Session_temp(_id = int(sys.argv[1]))
-    myConnection = MqttConnection(x, get_default_broker(), topic = generate_topic())
+
+    myConnection = MqttConnection(x, assign_broker(), topic = generate_topic())
     myConnection.Connect()
     myConnection.loop_start()
 
