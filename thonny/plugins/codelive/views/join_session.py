@@ -20,14 +20,20 @@ class JoinSessionDialog(tk.Toplevel):
         name_label = ttk.Label(form_frame, text = "Your alias")
         self.name_input = tk.Text(form_frame, height= 1)
 
-        session_topic_label = ttk.Label(form_frame, text = "Session Topic")
+        topic_label = ttk.Label(form_frame, text = "Session Topic")
         self.topic_input = tk.Text(form_frame, height= 1)
+
+        broker_label = ttk.Label(form_frame, text = "MQTT Broker")
+        self.broker_input = tk.Text(form_frame, height= 1)
 
         name_label.grid(row = 0, column = 0, sticky = tk.E)
         self.name_input.grid(row = 0, column = 1, sticky = tk.W, padx = 10, pady = 5)
         
-        session_topic_label.grid(row = 1, column = 0, sticky=tk.E)
+        topic_label.grid(row = 1, column = 0, sticky=tk.E)
         self.topic_input.grid(row = 1, column = 1, sticky=tk.W, padx = 10, pady = 5)
+
+        broker_label.grid(row = 2, column = 0, sticky=tk.E)
+        self.broker_input.grid(row = 2, column = 1, sticky=tk.W, padx = 10, pady = 5)
         
         button_frame = ttk.Frame(frame)
 
@@ -49,6 +55,8 @@ class JoinSessionDialog(tk.Toplevel):
         intro.pack(expand=True, padx = 10, pady = 5)
         form_frame.pack(fill=tk.X, expand=True, padx = 10, pady=5)
         button_frame.pack(side = tk.BOTTOM, padx = 10, pady=5)
+        
+        frame.pack(fill = tk.BOTH, expand = True)
 
         self.center(parent.winfo_geometry())
 
@@ -59,8 +67,8 @@ class JoinSessionDialog(tk.Toplevel):
         parent_x = int(parent_x)
         parent_y = int(parent_y)
 
-        w = 400
-        h = 200
+        w = 450
+        h = 180
 
         x = parent_x + (parent_w - w) / 2
         y = parent_y + (parent_h - h) / 2
@@ -70,10 +78,12 @@ class JoinSessionDialog(tk.Toplevel):
     def join_callback(self):
         name = self.name_input.get("0.0", "end").strip()
         topic = self.topic_input.get("0.0", "end").strip()
+        broker = self.broker_input.get("0.0", "end").strip()
 
-        if self.valid_name(name) and self.valid_topic(name):
+        if self.valid_name(name) and self.valid_connection(topic, broker):
             self.data["name"] = name
             self.data["topic"] = topic
+            self.data["broker"] = broker
 
             self.destroy()
 
@@ -92,15 +102,21 @@ class JoinSessionDialog(tk.Toplevel):
             return False
         return True
     
-    def valid_topic(self, s):
-        if len(s) < 12:
+    def valid_connection(self, topic, broker):
+        if len(topic) < 12:
             tk.messagebox.showerror(parent = self,
                                      title = "Error",
                                      message = "Please provide a unique topic with more than 12 characters.")
             return False
         
+        if len(broker) < 12:
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
+                                     message = "Please provide a valid broker.")
+            return False
+
         # TODO: replace with topic_exists(s) when topic_exists's logic is complete
-        if False: #topic_exists(s):
+        if False: #topic_exists(topic, broker):
             tk.messagebox.showerror(parent = self,
                                      title = "Error",
                                      message = "The topic doesn't exist. Make sure your topic is spelled correctly.")

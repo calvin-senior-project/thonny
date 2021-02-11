@@ -6,6 +6,10 @@ import os
 import heapq
 import random
 
+from tkinter import ttk
+from thonny import get_workbench
+from thonny.editors import Editor
+
 ALL_REGEX = re.compile("[a-zA-Z0-9 ./<>?;:\"\'`!@#$%^&*()\[\]{}_+=|(\\)-,~]")
 
 MIN_FREE_ID = 0
@@ -119,5 +123,19 @@ def publish_insert(broadcast_widget, source, cursor_after_change, index, text):
                                     text_widget = source,
                                     cursor_after_change = cursor_after_change)
 
+def str_to_editor(title, body):
+    wb = get_workbench()
+    notebook = wb.get_editor_notebook()
+    new_editor = Editor(notebook)
+
+    wb.event_generate("NewFile", editor=new_editor)
+    ttk.Notebook.add(notebook, new_editor, text = title)
+    notebook.select(new_editor)
+
+    new_editor.focus_set()
+    tk.Text.insert(new_editor.get_text_widget(), "0.0", body)
+
+    return new_editor
+
 def intiialize_documents(doc_list):
-    return []
+    return { doc["id"] : str_to_editor(doc["title"], doc["content"]) for doc in doc_list}

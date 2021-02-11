@@ -87,8 +87,26 @@ class MqttConnection(mqtt.Client):
 
     @classmethod
     def handshake(cls, name, topic, broker):
-        pass
-    
+        
+        '''
+        x = mqtt.CLient()
+        x.connect(...)
+
+        - publish message saying im a new user
+        - block till you get a reply
+        - when u get a reply, parse into a dict with keys id, name, docs (list), users (list)
+        - return these
+        '''
+        editors = list(WORKBENCH.get_editor_notebook().winfo_children())
+        
+        dummy_val = {"id": 1,
+                     "name" : name,
+                     "broker" : broker,
+                     "is_cohost" : True,
+                     "editors" : editors
+                     }
+        return dummy_val
+
     def get_port(self):
         return 1883
     
@@ -130,7 +148,7 @@ if __name__ == "__main__":
             self.user_id = _id
     
     x = Session_temp() if len(sys.argv) > 1 else Session_temp(_id = int(sys.argv[1]))
-    myConnection = MqttConnection(x, get_default_broker())
+    myConnection = MqttConnection(x, get_default_broker(), topic = generate_topic())
     myConnection.Connect()
     myConnection.loop_start()
 

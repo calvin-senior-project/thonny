@@ -114,6 +114,9 @@ class CreateSessionDialog(tk.Toplevel):
         session_topic_label = ttk.Label(form_frame, text = "Session Topic")
         self.topic_input = tk.Text(form_frame, height= 1, width = 50)
 
+        broker_label = ttk.Label(form_frame, text = "MQTT Broker")
+        self.broker_input = tk.Text(form_frame, height= 1, width = 50)
+
         self.auto_gen_topic_state = tk.IntVar()
         self.auto_generate_check = ttk.Checkbutton(form_frame, 
                                                    text = "Auto-generate", 
@@ -128,6 +131,9 @@ class CreateSessionDialog(tk.Toplevel):
         session_topic_label.grid(row = 1, column = 0, sticky=tk.E)
         self.topic_input.grid(row = 1, column = 1, sticky=tk.W, padx = 10, pady = 5)
         self.auto_generate_check.grid(row = 1, column = 3, sticky = tk.E)
+
+        broker_label.grid(row = 2, column = 0, sticky=tk.E)
+        self.broker_input.grid(row = 2, column = 1, sticky=tk.W, padx = 10, pady = 5)
 
         sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
         # Shared editors frame
@@ -175,7 +181,7 @@ class CreateSessionDialog(tk.Toplevel):
         parent_y = int(parent_y)
 
         w = 650
-        h = 325
+        h = 350
 
         x = parent_x + (parent_w - w) / 2
         y = parent_y + (parent_h - h) / 2
@@ -200,10 +206,12 @@ class CreateSessionDialog(tk.Toplevel):
     def start_callback(self):
         name = self.name_input.get("0.0", "end").strip()
         topic = self.topic_input.get("0.0", "end").strip()
+        broker = self.broker_input.get("0.0", "end").strip()
 
-        if self.valid_name(name) and self.valid_topic(name) and self.valid_selection():
+        if self.valid_name(name) and self.valid_connection(topic, broker) and self.valid_selection():
             self.data["name"] = name
             self.data["topic"] = topic
+            self.data["broker"] = broker
             self.data["shared_editors"] = self.editor_selector.get_shared_editors()
 
             self.destroy()
@@ -238,20 +246,27 @@ class CreateSessionDialog(tk.Toplevel):
             return False
         return True
     
-    def valid_topic(self, s):
-        if len(s) < 12:
+    def valid_connection(self, topic, broker):
+        if len(topic) < 12:
             tk.messagebox.showerror(parent = self,
                                      title = "Error",
                                      message = "Please provide a unique topic with more than 12 characters.")
             return False
         
-        if topic_exists(s):
+        if len(broker) < 12:
             tk.messagebox.showerror(parent = self,
                                      title = "Error",
-                                     message = "Your topic is already taken! Please provide a unique topic with more than 12 characters.")
+                                     message = "Please provide a valid broker.")
+            return False
+
+        # TODO: replace with topic_exists(s) when topic_exists's logic is complete
+        if False: #topic_exists(topic, broker):
+            tk.messagebox.showerror(parent = self,
+                                     title = "Error",
+                                     message = "The topic doesn't exist. Make sure your topic is spelled correctly.")
             return False
         return True
-    
+
     def valid_selection(self):
         if self.editor_selector.none_selected():
             tk.messagebox.showerror(parent = self,

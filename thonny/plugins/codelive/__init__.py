@@ -16,7 +16,9 @@ from thonny.plugins.codelive.client import Session
 from thonny.plugins.codelive.start_up_dialog import StartUpWizard
 from thonny.plugins.codelive.views.create_session import CreateSessionDialog
 from thonny.plugins.codelive.views.join_session import JoinSessionDialog
+
 import thonny.plugins.codelive.patched_callbacks as pc
+import thonny.plugins.codelive.utils as utils
 
 WORKBENCH = get_workbench()
 session = None
@@ -50,13 +52,8 @@ def toolbar_callback():
     #     session_type, code = start_session()
     #     if DEBUG:
     #         print("session type: %s\tcode: %d" % (session_type, code))
-
-    for x in WORKBENCH.get_editor_notebook().winfo_children():
-        print("--------------\n file name: %s\n title: %s\n--------------" % (x.get_filename(), x.get_title()))
-
-    # widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
-    # widget.insert = types.MethodType(pc.patched_insert, widget)
-    # widget.delete = types.MethodType(pc.patched_delete, widget) 
+    utils.str_to_editor("X", "Hello World!")
+    
 
 def create_session():
     

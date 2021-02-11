@@ -81,25 +81,26 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
-        shared_editors = utils.intiialize_documents(current_state["docs"])
+        # shared_editors = utils.intiialize_documents(current_state["docs"])
         
         return Session(_id = current_state["id"],
                        name = current_state["name"],
                        topic = topic,
                        broker = broker,
-                       shared_editors = shared_editors,
-                       is_host = current_state["is_cohost"])
+                       shared_editors = current_state["editors"],
+                       is_cohost = current_state["is_cohost"])
 
     def replace_insert_delete(self):
         defn_saved = False
 
         for editor in self._shared_editors:
+            widget = editor.get_text_widget()
+            
             if not defn_saved:
                 self._default_insert = widget.insert
                 self._default_delete = widget.delete
                 defn_saved = True
             
-            widget = editor.get_text_widget()
             widget.insert = types.MethodType(pc.patched_insert, widget)
             widget.delete = types.MethodType(pc.patched_delete, widget)
     
