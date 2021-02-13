@@ -64,9 +64,9 @@ if __name__ == "__main__":
     colors = ["#75DBFF", "#50FF56", "#FF8D75", "#FF50AD", "#FF9B47"]
 
     class DummyUser:
-        def __init__(self, is_host = False):
+        def __init__(self, _id, is_host = False):
             self.name = "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
-            self.author_id = random.randint(0, 100)
+            self.author_id = _id
             self.position = "1.1"
             self.color = random.choice(colors)
             self.last_alive = 0
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     class DummySession:
         def __init__(self, is_host = False):
-            self._remote_users = {i : DummyUser() for i in range(0, 10)}
+            self._remote_users = {i : DummyUser(i) for i in range(0, 10)}
             self.username = "John Doe"
             self.is_host = is_host
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             return self._remote_users
 
     root = tk.Tk()
-    dummyUser = DummyUser(len(sys.argv) > 2 and sys.argv[2] == "host")
+    dummyUser = DummyUser(random.randint(0, 9), len(sys.argv) > 2 and sys.argv[2] == "host")
     dummySession = DummySession(len(sys.argv) > 2 and sys.argv[2] == "host")
 
     if sys.argv[1] == "dialog":
@@ -120,11 +120,17 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == "item":
         frame = UserListItem(root, dummyUser)
-        frame.pack()
-    
+        frame.pack(fill = tk.BOTH, expand = True)
+
+        def t():
+            frame.toggle_driver()
+
+        button = ttk.Button(root, text = "Hey", command = t)
+        button.pack()
+
     elif sys.argv[1] == "list":
         frame = UserList(root, dummySession)
-        frame.pack()
+        frame.pack(fill = tk.BOTH, expand = True)
 
     elif sys.argv[1] == "action":
         frame = ActionList(root, dummySession)

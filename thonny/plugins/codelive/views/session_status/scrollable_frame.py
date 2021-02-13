@@ -17,18 +17,21 @@ class ScrollableFrame(ttk.Frame):
         
         canvas.create_window((0, 0), window=self.list, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-        self.children = list()
+        self.list_children = list()
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
     
     def get_frame(self):
         return self.list
 
     def append(self, widget):
-        self.children.append(widget)
+        self.list_children.append(widget)
         widget.pack(fill = tk.X, expand = True)
     
     def insert(self, index, widget):
         index_cpy = index
-        if index_cpy >= len(self.children):
+        if index_cpy >= len(self.list_children):
             self.append(widget)
             return
         
@@ -37,29 +40,29 @@ class ScrollableFrame(ttk.Frame):
             return
         
         # forget items below
-        for i in range(index, len(self.children)):
+        for i in range(index, len(self.list_children)):
             self.chidlren[i].forget()
         
         # insert to list
-        self.children.insert(index, widget)
+        self.list_children.insert(index, widget)
 
         # repack items
-        for i in range(index, len(self.children)):
-            self.children[i].pack(fill = tk.X, expand = True)
+        for i in range(index, len(self.list_children)):
+            self.list_children[i].pack(fill = tk.X, expand = True)
 
     
     def remove(self, index):
-        if index in self.children:
-            self.children[index].forget()
+        if index in self.list_children:
+            self.list_children[index].forget()
         
         # update indexes
-        while index < len(self.children) - 1:
-            self.children[index] = self.children[index + 1]
+        while index < len(self.list_children) - 1:
+            self.list_children[index] = self.list_children[index + 1]
             index += 1
         
         # delete highest index
-        del self.children[len(self.children) - 1]
+        del self.list_children[len(self.list_children) - 1]
     
     def remove_widget(self, widget):
         widget.forget()
-        self.children.remove(widget)
+        self.list_children.remove(widget)
