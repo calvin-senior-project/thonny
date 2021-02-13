@@ -186,7 +186,6 @@ class MqttConnection(mqtt.Client):
             "unique_code": unique_code,
             "id_assigned": id_assignment
         }
-        print(send_msg)
         mqtt.Client.publish(self, self.topic, payload = json.dumps(send_msg))
 
 
