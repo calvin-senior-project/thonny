@@ -59,3 +59,7 @@ class ScrollableFrame(ttk.Frame):
         
         # delete highest index
         del self.children[len(self.children) - 1]
+    
+    def remove_widget(self, widget):
+        widget.forget()
+        self.children.remove(widget)

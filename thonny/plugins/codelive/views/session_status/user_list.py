@@ -45,20 +45,45 @@ class UserListItem(tk.Frame):
             self.label_str.set(self.username + " (Driver)" if val else self.username)
             self.is_driver = val
 
+            if val and self.make_driver_button.winfo_ismapped():
+                    self.make_driver_button.forget()
+            elif not self.make_driver_button.winfo_ismapped():
+                self.make_driver_button.pack(side = tk.RIGHT, padx = 10)
+
 
 class UserList(ttk.Frame):
     def __init__(self, parent, session):
         self.scrollable_frame = ScrollableFrame(self)
-        self.session = session
+        self.users = session.get_users()
+        self.widgets = self.populate_list(self)
+        self.driver = session.get_driver()
+
+        self.scrollable_frame.pack(fill = tk.BOTH, expand = True)
+
+    def populate_list(self):
+        for i in self.users:
+            self.add_user(self.users[i])
 
     def add_user(self, user):
-        pass
+        line = UserList(self.scrollable_frame.get_list(), user)
+        self.scrollable_frame.append(line)
+        self.widgets[user.author_id] = line
 
     def remove_user(self, user):
-        pass
+        self.remove_id(user.author_id)
+    
+    def remove_id(self, _id):
+        if _id == self.driver:
+            return
+        self.scrollable_frame.remove_widget(self.widgets[_id])
 
     def get_driver(self):
-        pass
+        return self.driver
     
-    def set_driver(self):
-        pass
+    def set_driver(self, user):
+        # set new driver
+        self.widgets[user.author_id].is_driver(True)
+        self.driver = user.author_id
+        # remove current driver
+        if self.driver >= 0:
+            self.widgets[self.driver].is_driver(False)

@@ -99,6 +99,9 @@ if __name__ == "__main__":
                         return self._remote_users[i].name
             
             return "null"
+        
+        def get_users(self):
+            return self._remote_users
 
     root = tk.Tk()
     dummyUser = DummyUser(len(sys.argv) > 2 and sys.argv[2] == "host")

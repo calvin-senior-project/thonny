@@ -217,6 +217,9 @@ class Session:
         
         return "null"
     
+    def get_users(self):
+        return self._remote_users
+    
     def apply_remote_changes(self, event):
         msg = event.change
         
