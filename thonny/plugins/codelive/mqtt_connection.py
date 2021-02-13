@@ -139,11 +139,9 @@ class MqttConnection(mqtt.Client):
         instr = msg.payload.decode("utf-8")
 
         if get_sender_id(instr) == self.session.user_id:
-            print("instr ignored")
             return
 
         if msg.topic == self.topic:
-            print(instr)
             WORKBENCH.event_generate("RemoteChange", change=instr)
     
     def publish(self, msg):

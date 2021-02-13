@@ -7,7 +7,7 @@ class JoinSessionDialog(tk.Toplevel):
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent, bg = BG)
         self.protocol("WM_DELETE_WINDOW", self.cancel_callback)
-        self.title("Create Live Session")
+        self.title("Join Live Session")
         self.data = dict()
 
         frame = ttk.Frame(self)

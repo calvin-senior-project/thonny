@@ -201,6 +201,22 @@ class Session:
                 event, widget = i.split("|")
                 eval(widget).unbind(event, id_map)
     
+    def get_connection_info(self):
+        return {"name" : self.username,
+                "broker" : self._connection.broker,
+                "topic" : self._connection.topic}
+    
+    def get_driver(self):
+        if self.is_host:
+            return "You"
+        
+        else:
+            for i in self._remote_users:
+                if self._remote_users[i].is_host == True:
+                    return self._remote_users[i].name
+        
+        return "null"
+    
     def apply_remote_changes(self, event):
         msg = event.change
         
