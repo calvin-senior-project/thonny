@@ -11,7 +11,8 @@ class ScrollableFrame(ttk.Frame):
 
         self.list.bind("<Configure>",
                 lambda e: canvas.configure(
-                    scrollregion=canvas.bbox("all")
+                    scrollregion=canvas.bbox("all"),
+                    # width = max([x["width"] for x in self.list_children])
                 )
             )
         

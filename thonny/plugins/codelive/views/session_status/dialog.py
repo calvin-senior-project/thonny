@@ -3,14 +3,15 @@ from tkinter import ttk
 
 from thonny.plugins.codelive.views.session_status.user_list import UserList, UserListItem
 
-class SessionInfo(ttk.Frame):
+class SessionInfo(ttk.LabelFrame):
     def __init__(self, parent, session):
-        ttk.Frame.__init__(self, parent)
+        ttk.LabelFrame.__init__(self, parent, width = 100, text = "Session Info")
         # labels
-        name_label = ttk.Label(self, text = "Your name: ")
-        topic_label = ttk.Label(self, text = "Topic: ")
-        broker_label = ttk.Label(self, text = "Broker: ")
-        driver_label = ttk.Label(self, text = "Driver: ")
+        frame = ttk.Frame(self)
+        name_label = ttk.Label(frame, text = "Your name: ")
+        topic_label = ttk.Label(frame, text = "Topic: ")
+        broker_label = ttk.Label(frame, text = "Broker: ")
+        driver_label = ttk.Label(frame, text = "Driver: ")
 
         # feilds
         connection_info = session.get_connection_info()
@@ -19,10 +20,10 @@ class SessionInfo(ttk.Frame):
         self.driver_name = tk.StringVar()
         self.driver_name.set(session.get_driver())
 
-        name = ttk.Label(self, text = session.username)
-        topic = ttk.Label(self, text = connection_info["topic"])
-        broker = ttk.Label(self, text = connection_info["broker"])
-        driver = ttk.Label(self, textvariable = self.driver_name)
+        name = ttk.Label(frame, text = session.username)
+        topic = ttk.Label(frame, text = connection_info["topic"])
+        broker = ttk.Label(frame, text = connection_info["broker"])
+        driver = ttk.Label(frame, textvariable = self.driver_name)
 
         # position
         name_label.grid(row = 0, column = 0, sticky = tk.E)
@@ -34,27 +35,52 @@ class SessionInfo(ttk.Frame):
         topic.grid(row = 1, column = 1, sticky = tk.W)
         broker.grid(row = 2, column = 1, sticky = tk.W)
         driver.grid(row = 3, column = 1, sticky = tk.W)
+
+        frame.pack(side = tk.TOP, fill = tk.X, expand = True, anchor = tk.CENTER)
     
     def update_driver(self, s):
         self.driver_name.set(s)
 
 class ActionList(ttk.Frame):
     def __init__(self, parent, session):
-        pass 
+        ttk.Frame.__init__(self, parent)
+        leave = tk.Button(self, text = "Leave Session", foreground = "orange")
+        self.end = tk.Button(self, text = "End Session", foreground = "red")
+        
+        leave.pack(side = tk.TOP, fill = tk.X, expand = True)
+        self.end.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (5, 0))
+
+        self.end["state"] = tk.DISABLED if session.is_host else tk.NORMAL
+    
+    def driver(self, val = None):
+        if val == None:
+            return self.end["state"] == tk.NORMAL
+        
+        self.end["state"] = tk.DISABLED if val else tk.NORMAL
+    
+    def toggle_driver(self):
+        self.end["state"] = tk.DISABLED if self.end["state"] == tk.NORMAL else tk.NORMAL
+        
 
 class SessionDialog(tk.Toplevel):
     def __init__(self, parent, session):
         tk.Toplevel.__init__(self)
         self.title("Current Session")
-        frame = ttk.Frame(parent)
+        frame = ttk.Frame(self)
 
         self.session_info = SessionInfo(frame, session)
-        self.user_list = UserList(frame, session)
+        sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
+        self.user_list = UserList(frame, session, text = "Active Users", borderwidth = 1, width = 1000)
+        sep2 = ttk.Separator(frame, orient = tk.HORIZONTAL)
         self.buttons = ActionList(frame, session)
 
-        self.session_info.pack(side = tk.TOP)
-        self.user_list.pack(side = tk.TOP)
-        self.buttons.pack(side = tk.TOP)
+        self.session_info.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = 5, anchor = tk.CENTER)
+        sep1.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 10)
+        self.user_list.pack(side = tk.TOP, fill = tk.BOTH, expand = True, padx = 10, pady = (5, 5))
+        sep2.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 10)
+        self.buttons.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = (5, 10))
+
+        frame.pack(fill = tk.BOTH, expand = True)
 
 if __name__ == "__main__":
     import sys
@@ -134,6 +160,6 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == "action":
         frame = ActionList(root, dummySession)
-        frame.pack()
+        frame.pack(fill = tk.X, expand = True)
 
     root.mainloop()

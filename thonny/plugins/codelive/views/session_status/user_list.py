@@ -7,7 +7,6 @@ from thonny.plugins.codelive.views.session_status.scrollable_frame import Scroll
 class UserListItem(tk.Frame):
     def __init__(self, parent, user):
         tk.Frame.__init__(self, parent, highlightbackground = "#E9E9E9", highlightthickness = 1)
-        print("User")
         self.user_id = user.author_id
         self.color = user.color
         self.username = user.name
@@ -16,7 +15,7 @@ class UserListItem(tk.Frame):
         self.label_str = tk.StringVar()
 
         icon = self.create_icon()
-        name_label = tk.Label(self, width = 25, textvariable = self.label_str, anchor = "w")
+        name_label = tk.Label(self, textvariable = self.label_str, anchor = "w")
         self.make_driver_button = tk.Button(self, text = "Give Control", width = 10, command = self.make_driver)
 
         icon.pack(side=tk.LEFT, padx = 10)
@@ -50,16 +49,17 @@ class UserListItem(tk.Frame):
         self.driver(not self.is_driver)
 
 
-class UserList(ttk.Frame):
-    def __init__(self, parent, session):
-        ttk.Frame.__init__(self, parent)
-        self.scrollable_frame = ScrollableFrame(self)
+class UserList(ttk.LabelFrame):
+    def __init__(self, parent, session, **kw):
+        ttk.LabelFrame.__init__(self, parent, **kw)
+
+        self.scrollable_frame = ScrollableFrame(self, width = 200)
         self.users = session.get_users()
         self.widgets = dict()
         self.driver = session.get_driver()
 
         self.populate_list()
-        self.scrollable_frame.pack(fill = tk.BOTH, expand = True)
+        self.scrollable_frame.pack(side = tk.TOP, fill = tk.BOTH, expand = True, padx = 5, pady = 5)
 
     def populate_list(self):
         for i in self.users:
