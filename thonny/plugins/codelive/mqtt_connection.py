@@ -3,6 +3,11 @@ import time
 import string
 import random
 import os
+import json
+import uuid
+import sys
+import thonny.plugins.codelive.utils as utils
+import thonny.plugins.codelive.client as thonny_client
 
 from thonny import get_workbench
 
@@ -48,9 +53,23 @@ def generate_topic():
         else:
             return name
 
-def get_sender_id(instr):
-    # TODO: Update to work with json
-    return int(instr[instr.find("(") + 1 : instr.find("|")])
+def get_sender_id(json_msg):
+    return json_msg['id']
+
+def get_instr(json_msg):
+    return json_msg['instr']
+
+def get_unique_code(json_msg):
+    return json_msg['unique_code']
+
+def get_id_assigned(json_msg):
+    return json_msg['id_assigned']
+
+def need_id(my_id):
+    min_valid_id = 0
+    if isinstance(my_id, int) and my_id < min_valid_id:
+        return True
+    return False
 
 def test_broker(url):
     client = mqtt.Client()
@@ -87,65 +106,90 @@ class MqttConnection(mqtt.Client):
                  on_message = None,
                  on_publish = None,
                  on_connect = None):
+
         mqtt.Client.__init__(self)
-        self.session = session
+        self.session = session #can access current ID of client
         self.broker = assign_broker(broker_url) #TODO: Handle assign_broker returning none
         self.port = port or self.get_port()
         self.qos = qos
         self.delay = delay
-        #TODO: Intergrate get_topic, @Sam not sure what you wanted to do with the name param
-        #    program currently fails if not supplied a topic
-        self.topic = topic 
+        self.topic = topic
+        self.assigned_ids = [] #for handshake
+        
         
         if topic == None:
+            self.topic = generate_topic()
             print("New Topic: %s" % self.topic)
         else:
             print("Existing topic: %s" % self.topic)
 
     @classmethod
     def handshake(cls, name, topic, broker):
-        
-        '''
-        x = mqtt.CLient()
-        x.connect(...)
+        #TODO: Minor bug where the cls stays "alive"
+        temp_session = thonny_client.Session.create_session(name, topic, broker)
+        temp_session.is_host = False
+        temp_session.user_id = random.randint(-1000,-1)
+        my_connection = cls(temp_session, broker, topic = topic)
+        my_connection.Connect()
+        my_connection.loop_start()
 
-        - publish message saying im a new user
-        - block till you get a reply
-        - when u get a reply, parse into a dict with keys id, name, docs (list), users (list)
-        - return these
-        '''
+        my_code = str(uuid.uuid1())
+        my_connection.publish(unique_code = my_code)
+
+        while True:
+            if my_connection.assigned_ids:
+                sent_id, sent_code = my_connection.assigned_ids.pop()
+                if sent_code == my_code:
+                    break
+        my_connection.loop_stop()
         editors = list(WORKBENCH.get_editor_notebook().winfo_children())
         
-        dummy_val = {"id": 1,
-                     "name" : name,
-                     "broker" : broker,
-                     "is_cohost" : True,
-                     "editors" : editors
-                     }
-        return dummy_val
+        return {"id": sent_id,
+                "name": name,
+                "broker": broker,
+                "is_cohost": True, #TODO: Not sure how cohosts are assigned
+                "editors" : editors}
 
     def get_port(self):
         return 1883
     
-    def get_topic(self, name):
-        return name# + "_" + ''.join(random.choice(string.ascii_uppercase) for i in range(6))
-
     # Callback when connecting to the MQTT broker
     # def on_connect(self, userdata, flags, rc):
     #     if rc==0:
     #         print('Connected to ' + self.broker)
 
     def on_message(self, client, data, msg):
-        instr = msg.payload.decode("utf-8")
+        json_msg = json.loads(msg.payload)
 
-        if get_sender_id(instr) == self.session.user_id:
+        sender_id = get_sender_id(json_msg)
+        if sender_id == self.session.user_id:
+            print("instr ignored")
             return
 
-        if msg.topic == self.topic:
+        unique_code = get_unique_code(json_msg)
+        id_assignment = get_id_assigned(json_msg)
+        if need_id(self.session.user_id) and id_assignment:
+            self.assigned_ids.append((id_assignment,unique_code))
+            return
+
+        if self.session.is_host and need_id(sender_id):
+            self.publish(id_assignment = utils.get_new_id(), unique_code = unique_code)
+            return
+        
+        instr = get_instr(json_msg)
+        if msg.topic == self.topic and instr:
+            print(instr)
             WORKBENCH.event_generate("RemoteChange", change=instr)
     
-    def publish(self, msg):
-        mqtt.Client.publish(self, self.topic, msg)
+    def publish(self, msg = None, id_assignment = None, unique_code =  None):
+        send_msg = {
+            "id": self.session.user_id,
+            "instr": msg,
+            "unique_code": unique_code,
+            "id_assigned": id_assignment
+        }
+        mqtt.Client.publish(self, self.topic, payload = json.dumps(send_msg))
+
 
     def Connect(self):
         mqtt.Client.connect(self, self.broker, self.port, 60)
