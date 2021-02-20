@@ -1,12 +1,13 @@
 from datetime import datetime
 from threading import Lock
+import json
 
 USER_COLORS = {"#75DBFF", "#50FF56", "#FF8D75", "#FF50AD", "#FF9B47"}
 
 class RemoteUser:
-    def __init__(self, author_id, name, color, position = "0.0"):
+    def __init__(self, _id, name, color, position = "0.0"):
         self.name = name
-        self.author_id = author_id
+        self.id = _id
         self.position = position
         self.color = color
         self.last_alive = 0
@@ -15,7 +16,7 @@ class RemoteUser:
         self.cursor_colored = True
 
         self._lock = Lock()
-    
+
     def set_alive(self):
         self.last_live = 0
         self.is_idle = False
@@ -31,4 +32,16 @@ class RemoteUser:
 
     def update_position(self, new_position):
         self.position = new_position
-    
+
+class RemoteUserEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, RemoteUser):
+            return {
+                "name": o.name,
+                "id": o.id,
+                "position": o.position,
+                "color" : o.color
+            }
+            
+        else:
+            return super().default(o)

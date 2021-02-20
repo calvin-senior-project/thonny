@@ -8,7 +8,7 @@ import tkinter as tk
 class DummyUser:
     def __init__(self):
         self.name = "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
-        self.author_id = random.randint(0, 100)
+        self.id = random.randint(0, 100)
         self.position = "1.1"
         self.color = color
         self.last_alive = 0

@@ -15,7 +15,7 @@ from thonny.tktextext import EnhancedText
 import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.mqtt_connection as cmqtt
 import thonny.plugins.codelive.utils as utils
-from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS
+from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS, RemoteUserEncoder
 
 MSGLEN = 2048
 SOCK_ADDR = ('localhost', 8000)
@@ -40,7 +40,7 @@ class Session:
 
         # UI handles
         self._editor_notebook = WORKBENCH.get_editor_notebook()
-        self._shared_editors = [] if shared_editors == None else shared_editors
+        self._shared_editors = dict() if shared_editors == None else {editor : i for (i , editor) in enumerate(shared_editors)}
         self._active_editor = self._editor_notebook.get_current_editor().get_text_widget()
 
         # Network handles
@@ -89,6 +89,32 @@ class Session:
                        broker = broker,
                        shared_editors = current_state["editors"],
                        is_cohost = current_state["is_cohost"])
+    
+    def get_new_doc_id(self):
+        if self._shared_editors == None:
+            return 0
+        else:
+            existing = sorted(self._shared_editors.keys())
+            for i in range(len(existing)):
+                if i != existing[i]:
+                    return i
+            return len(existing)
+    
+    def get_document_state(self):
+        json_form = dict()
+
+        for editor in self._shared_editors:
+            temp = {"title": editor.get_title(),
+                    "content": editor.get_text_widget().get("0.0", tk.END)}
+            json_form[self._shared_editors[editor]] = temp
+        
+        return json_form
+    
+    def get_active_users(self, in_json = True):
+        if in_json == False:
+            return self._remote_users
+        
+        return RemoteUserEncoder().encode(self._remote_users)
 
     def replace_insert_delete(self):
         defn_saved = False
@@ -205,6 +231,12 @@ class Session:
         return {"name" : self.username,
                 "broker" : self._connection.broker,
                 "topic" : self._connection.topic}
+    
+    def get_document_state(self):
+        pass
+
+    def get_active_users(self):
+        pass
     
     def get_driver(self):
         if self.is_host:

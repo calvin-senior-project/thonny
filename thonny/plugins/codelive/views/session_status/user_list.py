@@ -7,7 +7,7 @@ from thonny.plugins.codelive.views.session_status.scrollable_frame import Scroll
 class UserListItem(tk.Frame):
     def __init__(self, parent, user):
         tk.Frame.__init__(self, parent, highlightbackground = "#E9E9E9", highlightthickness = 1)
-        self.user_id = user.author_id
+        self.user_id = user.
         self.color = user.color
         self.username = user.name
         self.is_driver = user.is_host
@@ -68,10 +68,10 @@ class UserList(ttk.LabelFrame):
     def add_user(self, user):
         line = UserListItem(self.scrollable_frame.get_frame(), user)
         self.scrollable_frame.append(line)
-        self.widgets[user.author_id] = line
+        self.widgets[user.id] = line
 
     def remove_user(self, user):
-        self.remove_id(user.author_id)
+        self.remove_id(user.id)
     
     def remove_id(self, _id):
         if _id == self.driver:
@@ -83,8 +83,8 @@ class UserList(ttk.LabelFrame):
     
     def set_driver(self, user):
         # set new driver
-        self.widgets[user.author_id].toggle_driver()
-        self.driver = user.author_id
+        self.widgets[user.id].toggle_driver()
+        self.driver = user.id
         # remove current driver
         if self.driver >= 0:
             self.widgets[self.driver].toggle_driver()

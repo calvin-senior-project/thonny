@@ -92,7 +92,7 @@ if __name__ == "__main__":
     class DummyUser:
         def __init__(self, _id, is_host = False):
             self.name = "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
-            self.author_id = _id
+            self.id = _id
             self.position = "1.1"
             self.color = random.choice(colors)
             self.last_alive = 0
