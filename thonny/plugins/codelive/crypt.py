@@ -56,6 +56,8 @@ class Crypt:
 
     def auth(self, _hash):
         '''
+        WARNING: Only to be used in handshakes
+        
         Checks if the _hash matches the password hash stored in memory.
         If it does, the function updates the pwd key and hash and returns true, Returns False otherwise.
         '''
