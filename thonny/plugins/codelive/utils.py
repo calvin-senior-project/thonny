@@ -15,30 +15,15 @@ ALL_REGEX = re.compile("[a-zA-Z0-9 ./<>?;:\"\'`!@#$%^&*()\[\]{}_+=|(\\)-,~]")
 MIN_FREE_ID = 0
 FREE_IDS = []
 
-def get_instruction(event, text, user_id = -1, cursor_pos = "", in_insert = False, debug = False):
-    print("V1")
+def get_instr_direct(event, editor_id, user_id = -1, cursor_pos = "", in_insert = False, debug = False):
     if debug:
-        print(
-            "keysym: ",
-            event.keysym,
-            "\tkeysym_num",
-            event.keysym_num,
-            "\tmatch:",
-            event.keysym == "BackSpace",
-            "\tcurrent:",
-            text.index(tk.CURRENT),
-            "- c:",
-            repr(text.get(text.index(tk.CURRENT))),
-            "\tinsert:",
-            text.index(tk.INSERT),
-            "- c:",
-            repr(text.get(text.index(tk.INSERT)))
-        )
+        print("direct")
     
     instr = None
-    
+    text = event.widget
+
     if ALL_REGEX.match(event.char):
-        instr = "I" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]"
+        instr = "I" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]<" + str(editor_id) + ">"
 
         if user_id == -1:
             instr += event.char
@@ -62,20 +47,21 @@ def get_instruction(event, text, user_id = -1, cursor_pos = "", in_insert = Fals
         print("Right Delete")
 
     if user_id != -1 and instr != None:
-        instr += "(" + str(user_id) + "|" + cursor_pos + ")"
+        instr += "(" + str(user_id) + "|" + cursor_pos + ")<" + str(editor_id) + ">"
         instr += event.char
     
-    print(instr)
+    if debug:
+        print(instr)
     return instr
 
-def get_instr_v2(event, is_insert, user_id = -1, debug = False):
-    print("V2")
+def get_instr_latent(event, editor_id, is_insert, user_id = -1, debug = False):
+    print("latent")
     instr = ""
     if is_insert:
         instr = "I-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index) + "]"
         
         if user_id != -1:
-            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")"
+            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")<" + str(editor_id) + ">"
             instr += event.text
     else:
         if event.index2 != None:
@@ -83,7 +69,7 @@ def get_instr_v2(event, is_insert, user_id = -1, debug = False):
         else:
             instr = "D-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index1) + "]"
         if user_id != -1 and instr != None:
-            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")"
+            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")<" + str(editor_id) + ">"
     
     return instr
 
@@ -131,6 +117,7 @@ def str_to_editor(title, body):
     wb.event_generate("NewFile", editor=new_editor)
     ttk.Notebook.add(notebook, new_editor, text = title)
     notebook.select(new_editor)
+    notebook.tab("current", text = title)
 
     new_editor.focus_set()
     tk.Text.insert(new_editor.get_text_widget(), "0.0", body)
@@ -138,4 +125,10 @@ def str_to_editor(title, body):
     return new_editor
 
 def intiialize_documents(doc_list):
-    return { doc["id"] : str_to_editor(doc["title"], doc["content"]) for doc in doc_list}
+    editors = dict()
+    for i in doc_list:
+        doc = doc_list[i]
+        editor = str_to_editor(doc["title"], doc["content"])
+        editors[editor] = i
+
+    return editors

@@ -41,19 +41,19 @@ def start_session():
     session.start_session()
     return (top.get_session_mode(), 0)
 
-def toolbar_callback():
-    # global session
-    # if session != None:
-    #     session.end()
-    #     if DEBUG:
-    #         print("Session end flag set")
-    #     session = None
-    # else:
-    #     session_type, code = start_session()
-    #     if DEBUG:
-    #         print("session type: %s\tcode: %d" % (session_type, code))
-    utils.str_to_editor("X", "Hello World!")
-    
+def create_session_vanilla(data = None):
+    data_session = data or {
+        "name": "Host Doe",
+        "topic": "test_topic_1234",
+        "broker": "test.mosquitto.org",
+        "shared_editors": WORKBENCH.get_editor_notebook().winfo_children()
+    }
+
+    session = Session.create_session(name = data_session["name"],
+                                     topic = data_session["topic"],
+                                     broker = data_session["broker"],
+                                     shared_editors = data_session["shared_editors"])
+    session.start_session()
 
 def create_session():
     
@@ -64,10 +64,20 @@ def create_session():
     if top.data == None:
         return
 
-    session = Session.create_session(name = top.data["name"],
-                                     topic = top.data["topic"],
-                                     broker = top.data["broker"],
-                                     shared_editors = top.data["shared_editors"])
+    create_session_vanilla(top.data)
+
+def toolbar_callback():
+    get_workbench().get_editor_notebook().get_current_editor().get_text_widget().set_read_only(True)
+
+def join_session_vanilla(data = None):
+    data_sess = data or {
+        "name": "Join Doe",
+        "topic": "test_topic_1234",
+        "broker": "test.mosquitto.org"
+    }
+    session = Session.join_session(name = data_sess["name"],
+                                   topic = data_sess["topic"],
+                                   broker = data_sess["broker"])
     
     session.start_session()
 
@@ -79,11 +89,7 @@ def join_session():
     if top.data == None:
         return
 
-    session = Session.join_session(name = top.data["name"],
-                                   topic = top.data["topic"],
-                                   broker = top.data["broker"])
-
-    session.start_session()
+    join_session_vanilla(top.data)
 
 def end_session():
     pass
@@ -125,6 +131,24 @@ def load_plugin():
                           command_label = "Join an Existing Session",
                           handler = join_session,
                           group=20,
+                          position_in_group="end",
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_host_t",
+                          menu_name = "CodeLive",
+                          command_label = "Create Test",
+                          handler = create_session_vanilla,
+                          group = 20,
+                          position_in_group="end",
+                          caption = "End",
+                          bell_when_denied = True)
+    
+    WORKBENCH.add_command(command_id = "codelive_join_t",
+                          menu_name = "CodeLive",
+                          command_label = "Join test",
+                          handler = join_session_vanilla,
+                          group = 20,
                           position_in_group="end",
                           caption = "End",
                           bell_when_denied = True)

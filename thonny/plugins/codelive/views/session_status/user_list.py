@@ -7,7 +7,7 @@ from thonny.plugins.codelive.views.session_status.scrollable_frame import Scroll
 class UserListItem(tk.Frame):
     def __init__(self, parent, user):
         tk.Frame.__init__(self, parent, highlightbackground = "#E9E9E9", highlightthickness = 1)
-        self.user_id = user.
+        self.user_id = user.id
         self.color = user.color
         self.username = user.name
         self.is_driver = user.is_host

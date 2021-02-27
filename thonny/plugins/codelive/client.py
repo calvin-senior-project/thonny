@@ -29,19 +29,22 @@ class Session:
                  topic = None,
                  broker = None,
                  shared_editors = None,
+                 remote_users = None,
                  is_host = False,
                  is_cohost = False,
                  debug = True):
 
-        self._remote_users = dict()
+        self._remote_users = remote_users if remote_users and not is_host else dict()
         self.username = name if name != None else ("Host" if is_host else "Client")
         self.user_id = _id if _id != -1 else utils.get_new_id()
         self._used_ids = []
 
         # UI handles
         self._editor_notebook = WORKBENCH.get_editor_notebook()
-        self._shared_editors = dict() if shared_editors == None else {editor : i for (i , editor) in enumerate(shared_editors)}
-        self._active_editor = self._editor_notebook.get_current_editor().get_text_widget()
+        self._shared_editors = {"id_first": dict(), "ed_first": dict()} \
+                                    if shared_editors == None \
+                                    else {"id_first": {i : editor for (i , editor) in enumerate(shared_editors)},
+                                          "ed_first": {editor : i for (i , editor) in enumerate(shared_editors)}}
 
         # Network handles
         self._connection = cmqtt.MqttConnection(self, broker_url=broker, topic = topic)
@@ -60,6 +63,7 @@ class Session:
             "text": self.bind_events(),
             "cursor": self.bind_cursor_callbacks()
         }
+
         self.initialized = False
         
         self._default_insert = None
@@ -81,32 +85,33 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
-        # shared_editors = utils.intiialize_documents(current_state["docs"])
-        
-        return Session(_id = current_state["id"],
+        print(current_state)
+        shared_editors = utils.intiialize_documents(current_state["docs"])
+
+        return Session(_id = current_state["id_assigned"],
                        name = current_state["name"],
                        topic = topic,
                        broker = broker,
-                       shared_editors = current_state["editors"],
-                       is_cohost = current_state["is_cohost"])
+                       shared_editors = shared_editors)
     
     def get_new_doc_id(self):
         if self._shared_editors == None:
             return 0
         else:
-            existing = sorted(self._shared_editors.keys())
+            existing = sorted(self._shared_editors["id_first"].keys())
             for i in range(len(existing)):
                 if i != existing[i]:
                     return i
             return len(existing)
     
-    def get_document_state(self):
+    def get_docs(self):
         json_form = dict()
-
-        for editor in self._shared_editors:
+        print("jeu:", json_form)
+        for editor in self._shared_editors["ed_first"]:
             temp = {"title": editor.get_title(),
                     "content": editor.get_text_widget().get("0.0", tk.END)}
-            json_form[self._shared_editors[editor]] = temp
+            print(temp)
+            json_form[self._shared_editors["ed_first"][editor]] = temp
         
         return json_form
     
@@ -119,7 +124,7 @@ class Session:
     def replace_insert_delete(self):
         defn_saved = False
 
-        for editor in self._shared_editors:
+        for editor in self._shared_editors["ed_first"]:
             widget = editor.get_text_widget()
             
             if not defn_saved:
@@ -135,20 +140,26 @@ class Session:
         '''
         Bind keypress binds the events from components with callbacks. The function keys 
         associated with the bindings are returned as values of a dictionary whose keys are string of
-        the event sequence and the components name separated by a "|"
+        the event sequence and the widget's name separated by a "|"
+
+        If the event is bound to a widget, the name of the widget is "editor_<the editor's assigned id>". 
         '''
 
         bind_hash = dict()
 
-        text_widget = get_workbench().get_editor_notebook().get_current_editor().get_text_widget()
+        for i in self._shared_editors["id_first"]:
+            text_widget = self._shared_editors["id_first"][i].get_text_widget()    
+            bind_hash["<KeyPress>|editor_" + str(i)] = text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
         
-        bind_hash["<KeyPress>|self._editor_notebook.get_current_editor()"] = text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
         bind_hash["LocalInsert|get_workbench()"] = get_workbench().bind("LocalInsert", self.broadcast_insert, True)
         bind_hash["LocalDelete|get_workbench()"] = get_workbench().bind("LocalDelete", self.broadcast_delete, True)
         
         return bind_hash
 
     def _cursor_blink(self):
+        '''
+        Runs of a daemon thread to show a remote user's pseudo-cursor...
+        '''
         while True:
             time.sleep(0.5)
             text_widget = self._editor_notebook.get_current_editor().get_text_widget()
@@ -167,34 +178,43 @@ class Session:
     
     def boradcast_cursor_motion(self, event):
         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
-        instr = "M(" + str(self.user_id) + "|" + text_widget.index(tk.INSERT) + ")"
+        editor_id = self._shared_editors["ed_first"][event.widget]
+        instr = "M(" + str(self.user_id) + "|" + text_widget.index(tk.INSERT) + ")<" + str(editor_id) + ">"
         self.send(instr)
     
     def broadcast_insert(self, event):
-        instr = utils.get_instr_v2(event, True, user_id = self.user_id)
+        editor = WORKBENCH.get_editor_notebook().get_current_editor()
+        editor_id = self._shared_editors["ed_first"][editor]
+        instr = utils.get_instr_latent(event, editor_id, True, user_id = self.user_id)
 
         if instr == None:
             return
 
         if self._debug:
-            print("*****************\nSending: %s\n*****************" % instr)
+            print("*****************\nSending: %s\n*****************" % repr(instr))
         self.send(instr)
 
     def broadcast_delete(self, event):
-        instr = utils.get_instr_v2(event, False, user_id = self.user_id)
+        editor = WORKBENCH.get_editor_notebook().get_current_editor()
+        editor_id = self._shared_editors["ed_first"][editor]
+        instr = utils.get_instr_latent(event, editor_id, False, user_id = self.user_id)
 
         if instr == None:
             return
         
         if self._debug:
-            print("*****************\nSending: %s\n*****************" % instr)
+            print("*****************\nSending: %s\n*****************" % repr(instr))
         
         self.send(instr)
 
     def broadcast_keypress(self, event):
-        text_widget = self._editor_notebook.get_current_editor().get_text_widget()
+        text_widget = event.widget
         
-        instr = utils.get_instruction(event, text_widget, self.user_id, 
+        if text_widget.is_read_only():
+            return
+        
+        editor_id = self._shared_editors["ed_first"][event.widget]
+        instr = utils.get_instr_direct(event, editor_id, self.user_id, 
                                 text_widget.index(tk.INSERT), False)
         
         if instr == None:
@@ -218,25 +238,31 @@ class Session:
 
         return bind_hash
 
-    def end_broadcast(self):
+    def enable_editing(self):
+        pass
+
+    def disable_editing(self):
+        pass
+
+    def unbind_input(self):
+        def unbind_editor(editor_id, id_map):
+            editor = self._shared_editors["id_first"][editor_id]
+            editor.unbind(event, id_map)
 
         for call_type in self._callback_ids:
             id_map = self._callback_ids[call_type]
 
             for i in id_map:
                 event, widget = i.split("|")
-                eval(widget).unbind(event, id_map)
-    
+                if widget.startswith("editor_"):
+                    unbind_editor(int(widget[widget.find("_") + 1:]), id_map)
+                else:
+                    eval(widget).unbind(event, id_map)
+
     def get_connection_info(self):
         return {"name" : self.username,
                 "broker" : self._connection.broker,
                 "topic" : self._connection.topic}
-    
-    def get_document_state(self):
-        pass
-
-    def get_active_users(self):
-        pass
     
     def get_driver(self):
         if self.is_host:
@@ -255,13 +281,14 @@ class Session:
     def apply_remote_changes(self, event):
         msg = event.change
         
-        codeview = self._editor_notebook.get_current_editor().get_text_widget()
+        codeview = None
     
         if self._debug:
             print("command: %s" % msg)
         
         if msg[0] in ("I", "D", "R", "T", "M"):
             position = msg[msg.find("[") + 1 : msg.find("]")]
+            codeview = self._shared_editors["id_first"][int(msg[msg.find("<") + 1: msg.find(">")])]
 
         if msg[0] == "I":
             new_text = msg[msg.find(")") + 1 : ]
@@ -288,11 +315,6 @@ class Session:
         
         elif msg[0] == "T":
             tk.Text.insert(codeview, position, '\t')
-        
-        # if msg[0] in ("I", "D", "R", "T", "M"):
-        #     user_id = msg[msg.find("(") + 1 : msg.find("|")]
-        #     cur_position = msg[msg.find("|") + 1: msg.find(")")]
-        #     self.update_remote_cursor(user_id, cur_position, is_keypress= msg[0] != "M")
 
     def update_remote_cursor(self, user_id, index, is_keypress = False):
         color = self._remote_users[user_id].color
@@ -315,5 +337,22 @@ class Session:
         self._connection.loop_start()
 
 if __name__ == "__main__":
-    sess = Session(sys.argv[1] == "host" if len(sys.argv) > 1 else False)
-    sess.start_session()
+    # sess = Session(sys.argv[1] == "host" if len(sys.argv) > 1 else False)
+    # sess.start_session()
+
+    class DummyEditor:
+        def __init__(self):
+            pass
+
+    class SessionTester:
+        
+        def get_docs(self):
+            sess = Session()
+            # test empty
+            print(sess.get_docs())
+            
+        def _populate_editors(self, session):
+            pass
+
+    sTest = SessionTester()
+    sTest.get_docs()
