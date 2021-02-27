@@ -23,10 +23,10 @@ def get_instr_direct(event, editor_id, user_id = -1, cursor_pos = "", in_insert 
     text = event.widget
 
     if ALL_REGEX.match(event.char):
-        instr = "I" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]<" + str(editor_id) + ">"
+        instr = "I" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]"
 
         if user_id == -1:
-            instr += event.char
+            instr += "<" + str(editor_id) + ">" + event.char
     
     elif event.keysym == "BackSpace":
         pos = text.index(tk.INSERT)
@@ -68,6 +68,7 @@ def get_instr_latent(event, editor_id, is_insert, user_id = -1, debug = False):
             instr = "D-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index1) + "!" + event.text_widget.index(event.index2) + "]"
         else:
             instr = "D-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index1) + "]"
+        
         if user_id != -1 and instr != None:
             instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")<" + str(editor_id) + ">"
     
