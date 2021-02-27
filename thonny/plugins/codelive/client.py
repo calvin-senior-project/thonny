@@ -43,27 +43,25 @@ class Session:
         self._editor_notebook = WORKBENCH.get_editor_notebook()
         self._shared_editors = {"id_first": dict(), "ed_first": dict()} \
                                     if shared_editors == None \
-                                    else {"id_first": {i : editor for (i , editor) in enumerate(shared_editors)},
-                                          "ed_first": {editor : i for (i , editor) in enumerate(shared_editors)}}
-
+                                    else self._enumerate_s_ed(shared_editors)
+        print("enumerated")
         # Network handles
         self._connection = cmqtt.MqttConnection(self, broker_url=broker, topic = topic)
         self._network_lock = threading.Lock()
-
+        print("connected")
         # client privilage flags
         self.is_host = is_host
         self.is_cohost = is_cohost
 
         # service threads
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
-
         # bindings
         WORKBENCH.bind("RemoteChange", self.apply_remote_changes)
         self._callback_ids = {
             "text": self.bind_events(),
             "cursor": self.bind_cursor_callbacks()
         }
-
+        print("events bound")
         self.initialized = False
         
         self._default_insert = None
@@ -72,6 +70,7 @@ class Session:
         self._debug = debug
 
         self.replace_insert_delete()
+        print("methods replaced")
 
     @classmethod
     def create_session(cls, name, topic, broker = None, shared_editors = None, debug = False):
@@ -85,15 +84,40 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
-        print(current_state)
+        print("handshake complete")
         shared_editors = utils.intiialize_documents(current_state["docs"])
-
+        print("editors retrieved")
         return Session(_id = current_state["id_assigned"],
                        name = current_state["name"],
                        topic = topic,
                        broker = broker,
                        shared_editors = shared_editors)
     
+    def _enumerate_s_ed(self, shared_editors):
+        id_f = {i : editor for (i , editor) in enumerate(shared_editors)}
+        ed_f = {editor: i for (i, editor) in id_f.items()}
+        tex_f = {editor.get_text_widget() : editor for editor in ed_f}
+        return {
+            "id_first": id_f,
+            "ed_first": ed_f,
+            "txt_first": tex_f
+        }
+
+    def editor_from_id(self, _id):
+        return self._shared_editors["id_first"][_id]
+    
+    def text_widget_from_id(self, _id):
+        return self.editor_from_id(_id).get_text_widget()
+
+    def id_from_editor(self, editor):
+        return self._shared_editors["ed_first"][editor]
+
+    def editor_from_text(self, widget):
+        return self._shared_editors["txt_first"][widget]
+    
+    def e_id_from_text(self, widget):
+        return self.id_from_editor(self.editor_from_text(widget))
+
     def get_new_doc_id(self):
         if self._shared_editors == None:
             return 0
@@ -108,10 +132,13 @@ class Session:
         json_form = dict()
         print("jeu:", json_form)
         for editor in self._shared_editors["ed_first"]:
+            content = editor.get_text_widget().get("0.0", tk.END)
+            content = content[: -1] if len(content) > 1 else content
+
             temp = {"title": editor.get_title(),
-                    "content": editor.get_text_widget().get("0.0", tk.END)}
+                    "content": content}
             print(temp)
-            json_form[self._shared_editors["ed_first"][editor]] = temp
+            json_form[self.id_from_editor(editor)] = temp
         
         return json_form
     
@@ -124,9 +151,7 @@ class Session:
     def replace_insert_delete(self):
         defn_saved = False
 
-        for editor in self._shared_editors["ed_first"]:
-            widget = editor.get_text_widget()
-            
+        for widget in self._shared_editors["txt_first"]:
             if not defn_saved:
                 self._default_insert = widget.insert
                 self._default_delete = widget.delete
@@ -147,9 +172,8 @@ class Session:
 
         bind_hash = dict()
 
-        for i in self._shared_editors["id_first"]:
-            text_widget = self._shared_editors["id_first"][i].get_text_widget()    
-            bind_hash["<KeyPress>|editor_" + str(i)] = text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
+        for widget in self._shared_editors["txt_first"]:
+            bind_hash["<KeyPress>|editor_" + str(self.e_id_from_text(widget))] = widget.bind("<KeyPress>", self.broadcast_keypress, True)
         
         bind_hash["LocalInsert|get_workbench()"] = get_workbench().bind("LocalInsert", self.broadcast_insert, True)
         bind_hash["LocalDelete|get_workbench()"] = get_workbench().bind("LocalDelete", self.broadcast_delete, True)
@@ -177,14 +201,13 @@ class Session:
         self._connection.publish(msg)
     
     def boradcast_cursor_motion(self, event):
-        text_widget = self._editor_notebook.get_current_editor().get_text_widget()
-        editor_id = self._shared_editors["ed_first"][event.widget]
-        instr = "M(" + str(self.user_id) + "|" + text_widget.index(tk.INSERT) + ")<" + str(editor_id) + ">"
+        editor_id = self.e_id_from_text(event.widget)
+        instr = "M(" + str(self.user_id) + "|" + event.widget.index(tk.INSERT) + ")<" + str(editor_id) + ">"
         self.send(instr)
     
     def broadcast_insert(self, event):
         editor = WORKBENCH.get_editor_notebook().get_current_editor()
-        editor_id = self._shared_editors["ed_first"][editor]
+        editor_id = self.id_from_editor(editor)
         instr = utils.get_instr_latent(event, editor_id, True, user_id = self.user_id)
 
         if instr == None:
@@ -196,7 +219,7 @@ class Session:
 
     def broadcast_delete(self, event):
         editor = WORKBENCH.get_editor_notebook().get_current_editor()
-        editor_id = self._shared_editors["ed_first"][editor]
+        editor_id = self.id_from_editor(editor)
         instr = utils.get_instr_latent(event, editor_id, False, user_id = self.user_id)
 
         if instr == None:
@@ -213,7 +236,7 @@ class Session:
         if text_widget.is_read_only():
             return
         
-        editor_id = self._shared_editors["ed_first"][event.widget]
+        editor_id = self.e_id_from_text(event.widget)
         instr = utils.get_instr_direct(event, editor_id, self.user_id, 
                                 text_widget.index(tk.INSERT), False)
         
@@ -246,8 +269,8 @@ class Session:
 
     def unbind_input(self):
         def unbind_editor(editor_id, id_map):
-            editor = self._shared_editors["id_first"][editor_id]
-            editor.unbind(event, id_map)
+            widget = self.text_widget_from_id(editor_id)
+            widget.unbind(event, id_map)
 
         for call_type in self._callback_ids:
             id_map = self._callback_ids[call_type]
@@ -288,11 +311,11 @@ class Session:
         
         if msg[0] in ("I", "D", "R", "T", "M"):
             position = msg[msg.find("[") + 1 : msg.find("]")]
-            codeview = self._shared_editors["id_first"][int(msg[msg.find("<") + 1: msg.find(">")])]
+            codeview = self.text_widget_from_id(int(msg[msg.find("<") + 1: msg.find(">")]))
 
         if msg[0] == "I":
-            new_text = msg[msg.find(")") + 1 : ]
-            
+            new_text = msg[msg.find(">") + 1 : ]
+            print(new_text)
             tk.Text.insert(codeview, position, new_text)
         
         elif msg[0] == "D":
