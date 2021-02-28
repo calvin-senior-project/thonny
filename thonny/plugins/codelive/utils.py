@@ -5,6 +5,7 @@ import queue
 import os
 import heapq
 import random
+import json
 
 from tkinter import ttk
 from thonny import get_workbench
@@ -19,14 +20,17 @@ def get_instr_direct(event, editor_id, user_id = -1, cursor_pos = "", in_insert 
     if debug:
         print("direct")
     
-    instr = None
+    instr = dict()
     text = event.widget
 
     if ALL_REGEX.match(event.char):
-        instr = "I" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]"
-
+        instr["type"] = "I"
+        instr["num"] = random.randint(0, 100000)
+        instr["pos"] = text.index(tk.INSERT)
+        
         if user_id == -1:
-            instr += "<" + str(editor_id) + ">" + event.char
+            instr["doc"] = editor_id
+            instr["text"] = event.char
     
     elif event.keysym == "BackSpace":
         pos = text.index(tk.INSERT)
@@ -37,42 +41,51 @@ def get_instr_direct(event, editor_id, user_id = -1, cursor_pos = "", in_insert 
         except: 
             pass
 
-        instr = "D" + str(random.randint(0, 100000)) + "[" + pos + "]"
-    elif event.keysym == "Return":
-        pos = text.index(tk.INSERT)
-        instr = "R" + str(random.randint(0, 100000)) + "[" + pos + "]"
-    elif event.keysym == "Tab":
-        instr = "T" + str(random.randint(0, 100000)) + "[" + text.index(tk.INSERT) + "]"
-    elif event.keysym == "Delete":
-        print("Right Delete")
+        instr["type"] = "D"
+        instr["num"] = random.randint(0, 100000)
+        instr["start"] = pos
 
-    if user_id != -1 and instr != None:
-        instr += "(" + str(user_id) + "|" + cursor_pos + ")<" + str(editor_id) + ">"
-        instr += event.char
+    else:
+        return None
+
+    if user_id != -1 and len(instr) != 0:
+        instr["user"] = user_id
+        instr["user_pos"] = cursor_pos
+        instr["doc"] = editor_id
+        instr["text"] = event.char
     
     if debug:
         print(instr)
-    return instr
+    return json.dumps(instr)
 
 def get_instr_latent(event, editor_id, is_insert, user_id = -1, debug = False):
     print("latent")
-    instr = ""
+    instr = dict()
+
     if is_insert:
-        instr = "I-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index) + "]"
-        
+        instr["type"] = "I"
+        instr["num"] = random.randint(0, 100000)
+        instr["pos"] = event.text_widget.index(event.index)
+
+
         if user_id != -1:
-            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")<" + str(editor_id) + ">"
-            instr += event.text
+            instr["user"] = user_id
+            instr["user_pos"] = event.cursor_after_change
+            instr["doc"] = editor_id
+            instr["text"] = event.text
     else:
+        instr["type"] = "D"
+        instr["num"] = random.randint(0, 100000)
+        instr["start"] = event.text_widget.index(event.index1)
+
         if event.index2 != None:
-            instr = "D-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index1) + "!" + event.text_widget.index(event.index2) + "]"
-        else:
-            instr = "D-" + str(random.randint(0, 100000)) + "[" + event.text_widget.index(event.index1) + "]"
+            instr["end"] = event.text_widget.index(event.index2)
         
         if user_id != -1 and instr != None:
-            instr += "(" + str(user_id) + "|" + event.cursor_after_change + ")<" + str(editor_id) + ">"
-    
-    return instr
+            instr["user"] = user_id
+            instr["user_pos"] = event.cursor_after_change
+            instr["doc"] = editor_id    
+    return json.dumps(instr)
 
 def get_new_id():
     global MIN_FREE_ID

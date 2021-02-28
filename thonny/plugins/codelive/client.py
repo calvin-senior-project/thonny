@@ -202,8 +202,13 @@ class Session:
     
     def boradcast_cursor_motion(self, event):
         editor_id = self.e_id_from_text(event.widget)
-        instr = "M(" + str(self.user_id) + "|" + event.widget.index(tk.INSERT) + ")<" + str(editor_id) + ">"
-        self.send(instr)
+        instr = {
+            "type": "M",
+            "user": self.user_id,
+            "user_pos": event.widget.index(tk.INSERT),
+            "doc": editor_id
+        }
+        self.send(json.dumps(instr))
     
     def broadcast_insert(self, event):
         editor = WORKBENCH.get_editor_notebook().get_current_editor()
@@ -302,42 +307,35 @@ class Session:
         return self._remote_users
     
     def apply_remote_changes(self, event):
-        msg = event.change
+        msg = json.loads(event.change)
         
         codeview = None
     
         if self._debug:
             print("command: %s" % msg)
         
-        if msg[0] in ("I", "D", "R", "T", "M"):
-            position = msg[msg.find("[") + 1 : msg.find("]")]
-            codeview = self.text_widget_from_id(int(msg[msg.find("<") + 1: msg.find(">")]))
+        codeview = self.text_widget_from_id(msg["doc"])
 
-        if msg[0] == "I":
-            new_text = msg[msg.find(">") + 1 : ]
-            print(new_text)
-            tk.Text.insert(codeview, position, new_text)
+        if msg["type"] == "I":
+            widget = self.text_widget_from_id(msg["doc"])
+            pos = msg["pos"]
+            new_text = msg["text"]
+
+            tk.Text.insert(widget, pos, new_text)
         
-        elif msg[0] == "D":
-            if msg.find("!") == -1:
-                tk.Text.delete(codeview, msg[msg.find("[") + 1 : msg.find("]")])
+        elif msg["type"] == "D":
+            if "end" in msg:
+                tk.Text.delete(codeview, msg["start"], msg["end"])
             else:
-                tk.Text.delete(codeview,
-                                msg[msg.find("[") + 1 : msg.find("!")],
-                                msg[msg.find("!") + 1 : msg.find("]")])
+                tk.Text.delete(codeview, msg["start"])
         
-        elif msg[0] == "R":
-            if codeview.index(position) == \
-                codeview.index(position[:position.find(".")] + ".end"):
-                idx = int(position[position.find(".") + 1: ]) + 1
-                tk.Text.insert(codeview, 
-                                position[:position.find(".") + 1] + str(idx),
-                                '\n')
-            else:
-                tk.Text.insert(codeview, position, '\n')
-        
-        elif msg[0] == "T":
-            tk.Text.insert(codeview, position, '\t')
+        elif msg["type"] == "M":
+            # user_id = msg["user"]
+            # doc_id = msg["doc"]
+            # pos = msg["user_pos"]
+
+            # self._remote_users[user_id].position(doc_id, pos)
+            pass
 
     def update_remote_cursor(self, user_id, index, is_keypress = False):
         color = self._remote_users[user_id].color

@@ -5,9 +5,10 @@ import json
 USER_COLORS = {"#75DBFF", "#50FF56", "#FF8D75", "#FF50AD", "#FF9B47"}
 
 class RemoteUser:
-    def __init__(self, _id, name, color, position = "0.0"):
+    def __init__(self, _id, name, color, doc_id, position = "0.0"):
         self.name = name
         self.id = _id
+        self.doc_id = doc_id 
         self.position = position
         self.color = color
         self.last_alive = 0
@@ -30,8 +31,15 @@ class RemoteUser:
         else:
             return False
 
-    def update_position(self, new_position):
-        self.position = new_position
+    def position(self, doc_id = None, position = None):
+        if position and doc_id:
+            if doc_id:
+                self.doc_id = doc_id
+
+            if position:
+                self.position = new_position
+        else:
+            return self.doc_id, self.position
 
 class RemoteUserEncoder(json.JSONEncoder):
     def default(self, o):
