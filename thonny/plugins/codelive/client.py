@@ -294,15 +294,18 @@ class Session:
     
     def get_driver(self):
         if self.is_host:
-            return "You"
+            return self.user_id, "You"
         
         else:
             for i in self._remote_users:
                 if self._remote_users[i].is_host == True:
-                    return self._remote_users[i].name
+                    return i, self._remote_users[i].name
         
-        return "null"
+        return -1, "null"
     
+    def get_name(self, _id):
+        return self._remote_users[_id].name
+
     def get_users(self):
         return self._remote_users
     

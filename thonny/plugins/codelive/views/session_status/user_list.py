@@ -42,8 +42,9 @@ class UserListItem(tk.Frame):
         else:
             self.label_str.set(self.username + " (Driver)" if val else self.username)
             self.is_driver = val
-
-            self.make_driver_button["state"] = tk.DISABLED if val else tk.NORMAL
+    
+    def enable_button(self, val = True):
+        self.make_driver_button["state"] = tk.NORMAL if val else tk.DISABLED
     
     def toggle_driver(self):
         self.driver(not self.is_driver)
@@ -55,6 +56,7 @@ class UserList(ttk.LabelFrame):
 
         self.scrollable_frame = ScrollableFrame(self, width = 200)
         self.users = session.get_users()
+        self.session = session
         self.widgets = dict()
         self.driver = session.get_driver()
 
@@ -77,6 +79,12 @@ class UserList(ttk.LabelFrame):
         if _id == self.driver:
             return
         self.scrollable_frame.remove_widget(self.widgets[_id])
+
+    def update_driver(self, _id):
+        is_host = self.session.user_id == _id
+        
+        for line in self.widgets:
+            line.enable_button(is_host and line.user_id != _id)
 
     def get_driver(self):
         return self.driver

@@ -17,6 +17,7 @@ class SessionInfo(ttk.LabelFrame):
         connection_info = session.get_connection_info()
         print(connection_info)
 
+        self.session = session
         self.driver_name = tk.StringVar()
         self.driver_name.set(session.get_driver())
 
@@ -38,28 +39,39 @@ class SessionInfo(ttk.LabelFrame):
 
         frame.pack(side = tk.TOP, fill = tk.X, expand = True, anchor = tk.CENTER)
     
-    def update_driver(self, s):
-        self.driver_name.set(s)
+    def update_driver(self, s = None):
+        if s != None:
+            self.driver_name.set(s)
+        
+        else:
+            self.driver_name.set(self.session.get_driver()[1])
+    
+    def update_driver_id(self, _id):
+        self.driver_name.set(self.session.get_name(_id))
 
 class ActionList(ttk.Frame):
     def __init__(self, parent, session):
         ttk.Frame.__init__(self, parent)
+        self.request_control = tk.Button(self, text = "Request Control", background = "green")
         leave = tk.Button(self, text = "Leave Session", foreground = "orange")
         self.end = tk.Button(self, text = "End Session", foreground = "red")
         
         leave.pack(side = tk.TOP, fill = tk.X, expand = True)
         self.end.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (5, 0))
 
+        self.request_control["state"] = tk.DISABLED if session.is_host else tk.NORMAL
         self.end["state"] = tk.DISABLED if session.is_host else tk.NORMAL
     
     def driver(self, val = None):
         if val == None:
             return self.end["state"] == tk.NORMAL
-        
+
+        self.request_control["state"] = tk.DISABLED if val else tk.NORMAL
         self.end["state"] = tk.DISABLED if val else tk.NORMAL
     
     def toggle_driver(self):
         self.end["state"] = tk.DISABLED if self.end["state"] == tk.NORMAL else tk.NORMAL
+        self.request_control["state"] = tk.DISABLED if self.request_control["state"] == tk.NORMAL else tk.NORMAL
         
 
 class SessionDialog(tk.Toplevel):
@@ -68,6 +80,7 @@ class SessionDialog(tk.Toplevel):
         self.title("Current Session")
         frame = ttk.Frame(self)
 
+        self.session = session
         self.session_info = SessionInfo(frame, session)
         sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
         self.user_list = UserList(frame, session, text = "Active Users", borderwidth = 1, width = 1000)
@@ -81,6 +94,15 @@ class SessionDialog(tk.Toplevel):
         self.buttons.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = (5, 10))
 
         frame.pack(fill = tk.BOTH, expand = True)
+    
+    def update_host(self, _id = None):
+        self.user_list.update_driver(_id)
+        self.buttons.driver(self.session.is_host)
+         
+        if _id == None:
+            self.session_info.update_driver()
+        else:
+            self.session_info.update_driver_id(_id)
 
 if __name__ == "__main__":
     import sys
