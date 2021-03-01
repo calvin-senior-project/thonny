@@ -19,27 +19,32 @@ class RemoteUser:
         self._lock = Lock()
 
     def set_alive(self):
-        self.last_live = 0
-        self.is_idle = False
+        with self._lock:
+            self.last_live = 0
+            self.is_idle = False
 
-    def set_idle(self):
-        self.last_alive += 1
-        
-        if self.last_alive > 5:
-            self.is_idle = True
-            return True
-        else:
-            return False
+    def age(self):
+        with self._lock:
+            self.last_alive += 1
+            
+            if self.last_alive > 5:
+                self.is_idle = True
+                return True
+            else:
+                return False
 
     def position(self, doc_id = None, position = None):
         if position and doc_id:
             if doc_id:
-                self.doc_id = doc_id
+                with self._lock:
+                    self.doc_id = doc_id
 
             if position:
-                self.position = new_position
+                with self._lock:
+                    self.position = position
         else:
-            return self.doc_id, self.position
+            with self._lock:
+                return self.doc_id, self.position
 
 class RemoteUserEncoder(json.JSONEncoder):
     def default(self, o):
