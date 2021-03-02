@@ -16,6 +16,7 @@ from thonny.plugins.codelive.client import Session
 from thonny.plugins.codelive.start_up_dialog import StartUpWizard
 from thonny.plugins.codelive.views.create_session import CreateSessionDialog
 from thonny.plugins.codelive.views.join_session import JoinSessionDialog
+from thonny.plugins.codelive.views.toolbar_popup import ToolbarPopup 
 
 import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.utils as utils
@@ -56,7 +57,6 @@ def create_session_vanilla(data = None):
     session.start_session()
 
 def create_session():
-    
     top = CreateSessionDialog(WORKBENCH)
     WORKBENCH.wait_window(top)
 
@@ -67,7 +67,13 @@ def create_session():
     create_session_vanilla(top.data)
 
 def toolbar_callback():
-    get_workbench().get_editor_notebook().get_current_editor().get_text_widget().set_read_only(True)
+    menu = ToolbarPopup(WORKBENCH, get_commands())
+
+    try: 
+        menu.tk_popup(WORKBENCH.winfo_pointerx(),
+                                 WORKBENCH.winfo_pointery())
+    finally: 
+        menu.grab_release()
 
 def join_session_vanilla(data = None):
     data_sess = data or {
@@ -103,84 +109,178 @@ def session_status():
 def null_cmd(event):
     print("hi")
 
+def get_commands():
+    global session
+    commands = {
+        19: [
+            {
+                "command_id": "codelive",
+                "menu_name": "Codelive",
+                "command_label": "Start a Live Collaboration Session",
+                "handler" : toolbar_callback,
+                "position_in_group": "end",
+                "image" : os.path.join(os.path.dirname(__file__), "res/people-yellow-small.png"),
+                "caption" : "CodeLive: MQTT based collaboration plugin",
+                "include_in_menu" : False,
+                "include_in_toolbar" : True,
+                "bell_when_denied" : True,
+                "enable": False
+            }
+        ],
+
+        20: [
+            {
+                "command_id": "codelive_host",
+                "menu_name": "Codelive",
+                "command_label": "Create a New Session",
+                "handler" : create_session,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Create new collaborative session",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session == None
+            },
+            {
+                "command_id": "codelive_join",
+                "menu_name": "Codelive",
+                "command_label": "Join an Existing Session",
+                "handler" : join_session,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Join an existing collaborative session",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session == None
+            },
+            # For testing only
+            {
+                "command_id": "codelive_host_t",
+                "menu_name": "Codelive",
+                "command_label": "Create Test",
+                "handler" : create_session_vanilla,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Create Test",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session == None
+            },
+            # For testing only
+            {
+                "command_id": "codelive_join_t",
+                "menu_name": "Codelive",
+                "command_label": "Join Test",
+                "handler" : join_session_vanilla,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Join Test",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session == None
+            },
+        ],
+
+        21 : [
+            {
+                "command_id": "codelive_end",
+                "menu_name": "Codelive",
+                "command_label": "End Session",
+                "handler" : end_session,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "End current session (for Hosts only)",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session != None
+            },
+            {
+                "command_id": "codelive_leave",
+                "menu_name": "Codelive",
+                "command_label": "Leave Session",
+                "handler" : leave_session,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Leave current session (for Hosts only)",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session != None
+            }
+        ],
+        22 : [
+            {
+                "command_id": "codelive_show",
+                "menu_name": "Codelive",
+                "command_label": "Show Current Session",
+                "handler" : session_status,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Show the status of the current session",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": session != None
+            }
+        ],
+        23 : [
+            {
+                "command_id": "codelive_help",
+                "menu_name": "Codelive",
+                "command_label": "Help",
+                "handler" : session_status,
+                "position_in_group": "end",
+                "image" : None,
+                "caption" : "Show Help for How to use Codelive",
+                "include_in_menu" : True,
+                "include_in_toolbar" : False,
+                "bell_when_denied" : True,
+                "enable": True
+            }
+        ]
+    }
+    
+    return commands
+
+def add_menu_items():
+    groups = get_commands()
+    
+    for group in sorted(groups.keys()):
+        for item in groups[group]:
+            WORKBENCH.add_command(command_id = item["command_id"],
+                                    menu_name = item["menu_name"],
+                                    command_label = item["command_label"],
+                                    handler = item["handler"],
+                                    position_in_group= item["position_in_group"],
+                                    image = item["image"],
+                                    caption = item["caption"],
+                                    include_in_menu= item["include_in_menu"],
+                                    include_in_toolbar = item["include_in_toolbar"],
+                                    bell_when_denied = item["bell_when_denied"])
+    # for 
+    #     pass
+
 def load_plugin():
+    groups = get_commands()
     
-    WORKBENCH.add_command(command_id = "codelive",
-                          menu_name = "CodeLive",
-                          command_label = "Start a Live Collaboration Session",
-                          handler = toolbar_callback,
-                          position_in_group="end",
-                          image=os.path.join(os.path.dirname(__file__), "res/people-yellow-small.png"),
-                          caption = "CodeLive: MQTT based collaboration plugin",
-                          #submenu=submenu,
-                          include_in_menu= False,
-                          include_in_toolbar = True,
-                          bell_when_denied = True)
-                
-    WORKBENCH.add_command(command_id = "codelive_host",
-                          menu_name = "CodeLive",
-                          command_label = "Create a New Session",
-                          handler = create_session,
-                          group = 20,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_join",
-                          menu_name = "CodeLive",
-                          command_label = "Join an Existing Session",
-                          handler = join_session,
-                          group=20,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_host_t",
-                          menu_name = "CodeLive",
-                          command_label = "Create Test",
-                          handler = create_session_vanilla,
-                          group = 20,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_join_t",
-                          menu_name = "CodeLive",
-                          command_label = "Join test",
-                          handler = join_session_vanilla,
-                          group = 20,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_end",
-                          menu_name = "CodeLive",
-                          command_label = "End Session",
-                          tester = lambda: session,
-                          handler = end_session,
-                          group=21,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_leave",
-                          menu_name = "CodeLive",
-                          command_label = "Leave Session",
-                          tester = lambda: session,
-                          handler = leave_session,
-                          group=21,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
-    
-    WORKBENCH.add_command(command_id = "codelive_show",
-                          menu_name = "CodeLive",
-                          command_label = "Show Session Status",
-                          handler = session_status,
-                          group=23,
-                          position_in_group="end",
-                          caption = "End",
-                          bell_when_denied = True)
+    for group in sorted(groups.keys()):
+        for item in groups[group]:
+            WORKBENCH.add_command(command_id = item["command_id"],
+                                    menu_name = item["menu_name"],
+                                    command_label = item["command_label"],
+                                    handler = item["handler"],
+                                    position_in_group= item["position_in_group"],
+                                    image = item["image"],
+                                    group = group,
+                                    caption = item["caption"],
+                                    include_in_menu= item["include_in_menu"],
+                                    include_in_toolbar = item["include_in_toolbar"],
+                                    bell_when_denied = item["bell_when_denied"])
 
     EnhancedText.insert = pc.patched_insert
     EnhancedText.delete = pc.patched_delete
