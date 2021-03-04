@@ -81,7 +81,8 @@ class UserEncoder(json.JSONEncoder):
                 "name": o.name,
                 "id": o.id,
                 "position": o.position,
-                "color" : o.color
+                "color" : o.color,
+                "is_host": o.is_host
             }
             
         else:

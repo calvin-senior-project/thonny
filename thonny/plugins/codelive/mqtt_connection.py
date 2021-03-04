@@ -134,8 +134,11 @@ class MqttConnection(mqtt_client.Client):
 
         greeting = {
             "id" : my_id,
-            "name" : name,
-            "reply" : reply_url
+            "instr" : {
+                "type": "join",
+                "name" : name,
+                "reply" : reply_url
+            }
         }
 
         mqtt_publish.single(topic, payload= json.dumps(greeting), hostname = broker)
@@ -148,23 +151,32 @@ class MqttConnection(mqtt_client.Client):
         return 1883
 
     def on_message(self, client, data, msg):
+        if msg.topic != self.topic:
+            return
+
         json_msg = json.loads(msg.payload)
 
-        sender_id = get_sender_id(json_msg)
-        print(sender_id)
-        print(self.session.user_id)
+        try:
+            sender_id = get_sender_id(json_msg)
+            instr = get_instr(json_msg)
+        except:
+            print("WARNING: missing instr/sender id")
+
         if sender_id == self.session.user_id:
             print("instr ignored")
             return
-
-        if sender_id < 0 and self.session.is_host:
-            self.respond_to_handshake(sender_id, json_msg["reply"], json_msg["name"])
-            return
         
-        instr = get_instr(json_msg)
-        if msg.topic == self.topic and instr:
-            print(instr)
+        # on join request
+        if instr["type"] and self.session.is_host:
+            self.respond_to_handshake(sender_id, instr["reply"], instr["name"])
+        
+        # on edit
+        elif instr["type"] in ("I", "D", "M"):
             WORKBENCH.event_generate("RemoteChange", change=instr)
+        
+        # On new user signal only sent by host 
+        elif msg["type"] == "new_join":
+            self.session.add_new_user(json_msg)
     
     def publish(self, msg = None, id_assignment = None, unique_code =  None):
         send_msg = {
@@ -193,8 +205,9 @@ class MqttConnection(mqtt_client.Client):
             "docs": self.session.get_docs(),
             "users": self.session.get_active_users()
         }
-
+        
         mqtt_publish.single(self.topic + "/" + reply_url, payload=json.dumps(message), hostname=self.broker)
+        # mqtt_subscribe.simple(self.topic + "/" + reply_url + "/success", hostname=self.broker)
 
     def Connect(self):
         mqtt_client.Client.connect(self, self.broker, self.port, 60)

@@ -188,7 +188,7 @@ class Session:
     
     def get_active_users(self, in_json = True):
         if in_json == False:
-            return self._users
+            return self._users.values()
         
         return UserEncoder().encode(self._users)
 
