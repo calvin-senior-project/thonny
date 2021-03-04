@@ -13,7 +13,6 @@ from thonny.codeview import SyntaxText
 
 from thonny.plugins.codelive.client import Session
 
-from thonny.plugins.codelive.start_up_dialog import StartUpWizard
 from thonny.plugins.codelive.views.create_session import CreateSessionDialog
 from thonny.plugins.codelive.views.join_session import JoinSessionDialog
 from thonny.plugins.codelive.views.toolbar_popup import ToolbarPopup 
