@@ -4,6 +4,10 @@ from tkinter import ttk
 from thonny import get_workbench
 from thonny.plugins.codelive.mqtt_connection import generate_topic, topic_exists
 
+from thonny.plugins.codelive.views.hinttext import HintText
+from thonny.plugins.codelive.views.textspin import TextSpin
+from thonny.plugins.codelive.mqtt_connection import BROKER_URLS
+
 # For testing only!!!!!
 if __name__ == "__main__":
     class DummyEditor:
@@ -109,13 +113,13 @@ class CreateSessionDialog(tk.Toplevel):
         form_frame = ttk.Frame(frame, width = 50)
 
         name_label = ttk.Label(form_frame, text = "Your alias")
-        self.name_input = tk.Text(form_frame, height= 1, width = 50)
+        self.name_input = HintText(form_frame) # tk.Text(form_frame, height= 1, width = 50)
 
         session_topic_label = ttk.Label(form_frame, text = "Session Topic")
-        self.topic_input = tk.Text(form_frame, height= 1, width = 50)
+        self.topic_input = HintText(form_frame) # tk.Text(form_frame, height= 1, width = 50)
 
         broker_label = ttk.Label(form_frame, text = "MQTT Broker")
-        self.broker_input = tk.Text(form_frame, height= 1, width = 50)
+        self.broker_input = TextSpin(form_frame, BROKER_URLS, mode = 'option') # tk.Text(form_frame, height= 1, width = 50)
 
         self.auto_gen_topic_state = tk.IntVar()
         self.auto_generate_check = ttk.Checkbutton(form_frame, 
@@ -124,16 +128,26 @@ class CreateSessionDialog(tk.Toplevel):
                                                    variable = self.auto_gen_topic_state,
                                                    onvalue = 1,
                                                    offvalue = 0)
+        
+        self.default_broker_val = tk.IntVar()
+        self.default_broker_val.set(1)
+        self.default_broker_check = ttk.Checkbutton(form_frame, 
+                                                   text = "Built-In", 
+                                                   command = self.default_broker_callback,
+                                                   variable = self.default_broker_val,
+                                                   onvalue = 1,
+                                                   offvalue = 0)
 
         name_label.grid(row = 0, column = 0, sticky = tk.E)
         self.name_input.grid(row = 0, column = 1, sticky = tk.W, padx = 10, pady = 5)
         
         session_topic_label.grid(row = 1, column = 0, sticky=tk.E)
         self.topic_input.grid(row = 1, column = 1, sticky=tk.W, padx = 10, pady = 5)
-        self.auto_generate_check.grid(row = 1, column = 3, sticky = tk.E)
+        self.auto_generate_check.grid(row = 1, column = 3, sticky = tk.W)
 
         broker_label.grid(row = 2, column = 0, sticky=tk.E)
         self.broker_input.grid(row = 2, column = 1, sticky=tk.W, padx = 10, pady = 5)
+        self.default_broker_check.grid(row = 2, column = 3, sticky = tk.W)
 
         sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
         # Shared editors frame
@@ -204,9 +218,10 @@ class CreateSessionDialog(tk.Toplevel):
         return editors
 
     def start_callback(self):
-        name = self.name_input.get("0.0", "end").strip()
-        topic = self.topic_input.get("0.0", "end").strip()
-        broker = self.broker_input.get("0.0", "end").strip()
+        name = self.name_input.val()
+        topic = self.topic_input.val()
+        broker_val = self.broker_input.val()
+        broker = broker_val[broker_val["active"]]
 
         if self.valid_name(name) and self.valid_connection(topic, broker) and self.valid_selection():
             self.data["name"] = name
@@ -224,19 +239,18 @@ class CreateSessionDialog(tk.Toplevel):
             self.data = None
             self.destroy()
     
+    def default_broker_callback(self):
+        is_text = self.default_broker_val.get() == 0
+        self.broker_input.mode("text" if is_text else "option")
+
     def auto_gen_callback(self):
         # on uncheck
         if self.auto_gen_topic_state.get() == 0:
-            self.topic_input["state"] = tk.NORMAL
-            self.topic_input.configure(background = "white")
+            self.topic_input.state(tk.NORMAL)
         # on check
         else:
-            n = generate_topic()
-            print("gen-ed:", n)
-            tk.Text.delete(self.topic_input, "0.0", "end")
-            tk.Text.insert(self.topic_input, "0.0", n)
-            self.topic_input.configure(background = "#EEEEEE")
-            self.topic_input["state"] = tk.DISABLED
+            self.topic_input.val(generate_topic())
+            self.topic_input.state(tk.DISABLED)
     
     def valid_name(self, s):
         if len(s) < 8:
