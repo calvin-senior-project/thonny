@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 from tkinter import ttk
 
 from thonny.plugins.codelive.views.session_status.user_list import UserList, UserListItem
@@ -19,7 +20,8 @@ class SessionInfo(ttk.LabelFrame):
 
         self.session = session
         self.driver_name = tk.StringVar()
-        self.driver_name.set(session.get_driver())
+        _id, name = session.get_driver()
+        self.driver_name.set(name + " (You)" if self.session.user_id == _id else name)
 
         name = ttk.Label(frame, text = session.username)
         topic = ttk.Label(frame, text = connection_info["topic"])
@@ -42,25 +44,31 @@ class SessionInfo(ttk.LabelFrame):
     def update_driver(self, s = None):
         if s != None:
             self.driver_name.set(s)
-        
         else:
-            self.driver_name.set(self.session.get_driver()[1])
+            _id, name = self.session.get_driver()
+            self.driver_name.set(name + " (You)" if self.session.user_id == _id else name)
     
     def update_driver_id(self, _id):
-        self.driver_name.set(self.session.get_name(_id))
+        name = self.session.get_name(_id) + " (You)" if self.session.user_id == _id else self.session.get_name(_id)
+        self.driver_name.set(name)
 
 class ActionList(ttk.Frame):
     def __init__(self, parent, session):
         ttk.Frame.__init__(self, parent)
-        self.request_control = tk.Button(self, text = "Request Control", background = "green")
-        leave = tk.Button(self, text = "Leave Session", foreground = "orange")
-        self.end = tk.Button(self, text = "End Session", foreground = "red")
-        
-        leave.pack(side = tk.TOP, fill = tk.X, expand = True)
-        self.end.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (5, 0))
 
-        self.request_control["state"] = tk.DISABLED if session.is_host else tk.NORMAL
-        self.end["state"] = tk.DISABLED if session.is_host else tk.NORMAL
+        self.session = session
+        self.request_control = tk.Button(self, text = "Request Control", foreground = "green", command = self._request_callback)
+        leave = tk.Button(self, text = "Leave Session", foreground = "orange", command = self._leave_callback)
+        self.end = tk.Button(self, text = "End Session", foreground = "red", command = self._end_callback)
+        
+        self.request_control.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (5, 5), padx = 10)
+        leave.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10)
+        self.end.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (0, 5), padx = 10)
+
+        self.request_control["state"] = tk.NORMAL if session.is_host else tk.DISABLED
+        self.end["state"] = tk.NORMAL if session.is_host else tk.DISABLED
+
+        self.retry_attempt = 0
     
     def driver(self, val = None):
         if val == None:
@@ -72,6 +80,44 @@ class ActionList(ttk.Frame):
     def toggle_driver(self):
         self.end["state"] = tk.DISABLED if self.end["state"] == tk.NORMAL else tk.NORMAL
         self.request_control["state"] = tk.DISABLED if self.request_control["state"] == tk.NORMAL else tk.NORMAL
+    
+    def _request_callback(self):
+        status = self.session.request_control()
+
+        if status == 0:
+            # Success
+            pass
+        elif status == 1:
+            # Rejected
+            self.retry_attempt += 1
+            ret = messagebox.askretrycancel("Request rejected", "Your request was rejected. Do you want to request control again?")
+            if ret:
+                if self.retry_attempt >= 5:
+                    messagebox.showerror("Unable to Join", "You cannot request control at the moment. Pleas try again later.")
+                else:
+                    self._request_callback()
+
+        elif status == 2:
+            #  out
+            messagebox.showerror("Request timed-out", "Your request has timed out. Please try again later.")
+        else:
+            # general error
+            messagebox.showerror("Error", "Unable to join. Please try again later.")
+        
+        # reset retry attempts after last attempt
+        self.retry_attempt = 0
+
+    def _leave_callback(self):
+        ret = self.session.leave()
+        
+        if ret == 0:
+            self.winfo_parent().destroy()
+
+    def _end_callback(self):
+        ret = self.session.end()
+        
+        if ret == 0:
+            self.winfo_parent().destroy()
         
 
 class SessionDialog(tk.Toplevel):
@@ -94,7 +140,8 @@ class SessionDialog(tk.Toplevel):
         self.buttons.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = (5, 10))
 
         frame.pack(fill = tk.BOTH, expand = True)
-    
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
     def update_host(self, _id = None):
         self.user_list.update_driver(_id)
         self.buttons.driver(self.session.is_host)
@@ -103,6 +150,9 @@ class SessionDialog(tk.Toplevel):
             self.session_info.update_driver()
         else:
             self.session_info.update_driver_id(_id)
+    
+    def on_closing(self):
+        pass
 
 if __name__ == "__main__":
     import sys
@@ -125,12 +175,12 @@ if __name__ == "__main__":
 
     class DummySession:
         def __init__(self, is_host = False):
-            self._remote_users = {i : DummyUser(i) for i in range(0, 10)}
+            self._users = {i : DummyUser(i) for i in range(0, 10)}
             self.username = "John Doe"
             self.is_host = is_host
 
             if self.is_host == False:
-                self._remote_users[random.randint(0, 9)].is_host = True
+                self._users[random.randint(0, 9)].is_host = True
 
         def get_connection_info(self):
             return {"name" : self.username,
@@ -142,14 +192,14 @@ if __name__ == "__main__":
                 return "You"
             
             else:
-                for i in self._remote_users:
-                    if self._remote_users[i].is_host == True:
-                        return self._remote_users[i].name
+                for i in self._users:
+                    if self._users[i].is_host == True:
+                        return self._users[i].name
             
             return "null"
         
         def get_users(self):
-            return self._remote_users
+            return self._users
 
     root = tk.Tk()
     dummyUser = DummyUser(random.randint(0, 9), len(sys.argv) > 2 and sys.argv[2] == "host")

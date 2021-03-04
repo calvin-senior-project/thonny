@@ -19,12 +19,12 @@ class DummyUser:
 
 class DummySession:
     def __init__(self, is_host = False):
-        self._remote_users = {i : DummyUser() for i in range(0, 10)}
+        self._users = {i : DummyUser() for i in range(0, 10)}
         self.username = "John Doe"
         self.is_host = is_host
 
         if self.is_host == False:
-            self._remote_users[random.randint(0, 9)].is_host = True
+            self._users[random.randint(0, 9)].is_host = True
 
     def get_connection_info(self):
         return {"name" : self.username,
@@ -36,7 +36,7 @@ class DummySession:
             return "You"
         
         else:
-            for user in self._remote_users:
+            for user in self._users:
                 if user.is_host == True:
                     return user.name
         

@@ -12,10 +12,13 @@ import types
 
 from thonny import get_workbench
 from thonny.tktextext import EnhancedText
+
 import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.mqtt_connection as cmqtt
 import thonny.plugins.codelive.utils as utils
-from thonny.plugins.codelive.remote_user import RemoteUser, USER_COLORS, RemoteUserEncoder
+
+from thonny.plugins.codelive.user import User, UserEncoder
+from thonny.plugins.codelive.views.session_status.dialog import SessionDialog
 
 MSGLEN = 2048
 SOCK_ADDR = ('localhost', 8000)
@@ -29,19 +32,19 @@ class Session:
                  topic = None,
                  broker = None,
                  shared_editors = None,
-                 remote_users = None,
+                 users = None,
                  is_host = False,
                  is_cohost = False,
                  debug = True):
 
-        self._remote_users = remote_users if remote_users and not is_host else dict()
+        self._users = users if users else dict()
         self.username = name if name != None else ("Host" if is_host else "Client")
         self.user_id = _id if _id != -1 else utils.get_new_id()
         self._used_ids = []
 
         # UI handles
         self._editor_notebook = WORKBENCH.get_editor_notebook()
-        self._shared_editors = {"id_first": dict(), "ed_first": dict()} \
+        self._shared_editors = {"id_first": dict(), "ed_first": dict(), "txt_first": dict()} \
                                     if shared_editors == None \
                                     else self._enumerate_s_ed(shared_editors)
         print("enumerated")
@@ -55,6 +58,7 @@ class Session:
 
         # service threads
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
+        
         # bindings
         WORKBENCH.bind("RemoteChange", self.apply_remote_changes)
         self._callback_ids = {
@@ -66,10 +70,11 @@ class Session:
         
         self._default_insert = None
         self._defualt_delete = None
+        
+        self.replace_insert_delete()
+        self._add_self(is_host)
 
         self._debug = debug
-
-        self.replace_insert_delete()
         print("methods replaced")
 
     @classmethod
@@ -93,6 +98,45 @@ class Session:
                        broker = broker,
                        shared_editors = shared_editors)
     
+    def _add_self(self, is_host):
+        current_doc = min(self._shared_editors["id_first"])
+        me = User(self.user_id, self.username, current_doc, is_host= is_host)
+        self._users[self.user_id] = me
+
+
+    def request_control(self):
+        '''
+        Requests control from the host
+
+        On success, returns 0
+        On rejection, returns 1
+        On timeout, returns 2
+        In a general error, returns 3, and error object
+        '''
+        # user_man.request_control()
+        pass
+
+    def leave(self):
+        '''
+        Attempts to leave the session
+
+        On success, returns 0
+        On failure, returns 1
+        '''
+        pass
+
+    def end(self):
+        '''
+        Attempts to end the session (only available to acting hosts)
+
+        On success, returns 0;
+        On failure, returns 1
+        '''
+        if not self.is_host:
+            return 1
+        
+        pass
+
     def _enumerate_s_ed(self, shared_editors):
         id_f = {i : editor for (i , editor) in enumerate(shared_editors)}
         ed_f = {editor: i for (i, editor) in id_f.items()}
@@ -144,9 +188,9 @@ class Session:
     
     def get_active_users(self, in_json = True):
         if in_json == False:
-            return self._remote_users
+            return self._users
         
-        return RemoteUserEncoder().encode(self._remote_users)
+        return UserEncoder().encode(self._users)
 
     def replace_insert_delete(self):
         defn_saved = False
@@ -189,13 +233,13 @@ class Session:
             text_widget = self._editor_notebook.get_current_editor().get_text_widget()
 
             for i in text_widget.tag_names():
-                if i != str(self.user_id) and i in self._remote_users:
-                    if self._remote_users[i].cursor_colored:
+                if i != str(self.user_id) and i in self._users:
+                    if self._users[i].cursor_colored:
                         text_widget.tag_config(i, background="white")
-                        self._remote_users[i].cursor_colored = False
+                        self._users[i].cursor_colored = False
                     else:
-                        text_widget.tag_config(i, background=self._remote_users[i].color)
-                        self._remote_users[i].cursor_colored = True
+                        text_widget.tag_config(i, background=self._users[i].color)
+                        self._users[i].cursor_colored = True
 
     def send(self, msg = None):
         self._connection.publish(msg)
@@ -294,20 +338,21 @@ class Session:
     
     def get_driver(self):
         if self.is_host:
-            return self.user_id, "You"
+            return self.user_id, self._users[self.user_id].name
         
         else:
-            for i in self._remote_users:
-                if self._remote_users[i].is_host == True:
-                    return i, self._remote_users[i].name
+            for i in self._users:
+                if self._users[i].is_host == True:
+                    return i, self._users[i].name
         
         return -1, "null"
     
     def get_name(self, _id):
-        return self._remote_users[_id].name
+        print(self._users[_id].name)
+        return self._users[_id].name
 
     def get_users(self):
-        return self._remote_users
+        return self._users
     
     def apply_remote_changes(self, event):
         msg = json.loads(event.change)
@@ -337,11 +382,11 @@ class Session:
             # doc_id = msg["doc"]
             # pos = msg["user_pos"]
 
-            # self._remote_users[user_id].position(doc_id, pos)
+            # self._users[user_id].position(doc_id, pos)
             pass
 
     def update_remote_cursor(self, user_id, index, is_keypress = False):
-        color = self._remote_users[user_id].color
+        color = self._users[user_id].color
         text_widget = self._editor_notebook.get_current_editor().get_text_widget()
         
         text_widget.mark_set(user_id, index)
@@ -360,9 +405,8 @@ class Session:
         self._connection.Connect()
         self._connection.loop_start()
 
+
 if __name__ == "__main__":
-    # sess = Session(sys.argv[1] == "host" if len(sys.argv) > 1 else False)
-    # sess.start_session()
 
     class DummyEditor:
         def __init__(self):

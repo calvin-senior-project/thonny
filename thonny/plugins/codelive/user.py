@@ -1,22 +1,50 @@
 from datetime import datetime
 from threading import Lock
+
 import json
+import random
 
-USER_COLORS = {"#75DBFF", "#50FF56", "#FF8D75", "#FF50AD", "#FF9B47"}
+from thonny.plugins.codelive.res.default_values import COLORS
 
-class RemoteUser:
-    def __init__(self, _id, name, color, doc_id, position = "0.0"):
+def get_color(used_colors = None):
+    if used_colors == None:
+        return random.choice(COLORS)
+    
+    else:
+        if len(used_colors) == len(COLORS):
+            raise ValueError("Unable to assign a new color: len(used_colors) == len(COLORS)")
+
+        for i in range(len(COLORS)):
+            color = random.choice(COLORS)
+            if color not in used_colors:
+                return color
+        
+        raise ValueError("Unable to assign a new color: attempt timed out")
+
+class User:
+    def __init__(self, _id, name, doc_id, color = get_color(), is_host = False, position = "0.0"):
         self.name = name
         self.id = _id
+        self.color = color
+
+        self.is_host = is_host
+
         self.doc_id = doc_id 
         self.position = position
-        self.color = color
-        self.last_alive = 0
 
+        self.last_alive = 0
         self.is_idle = False
         self.cursor_colored = True
 
         self._lock = Lock()
+
+    def host(self, val = None):
+        if val:
+            with self._lock:
+                self.is_host = val
+        else:
+            with self._lock:
+                return self.is_host
 
     def set_alive(self):
         with self._lock:
@@ -46,9 +74,9 @@ class RemoteUser:
             with self._lock:
                 return self.doc_id, self.position
 
-class RemoteUserEncoder(json.JSONEncoder):
+class UserEncoder(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, RemoteUser):
+        if isinstance(o, User):
             return {
                 "name": o.name,
                 "id": o.id,

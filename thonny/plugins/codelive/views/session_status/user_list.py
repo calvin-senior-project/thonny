@@ -5,11 +5,11 @@ from thonny import get_workbench
 from thonny.plugins.codelive.views.session_status.scrollable_frame import ScrollableFrame
 
 class UserListItem(tk.Frame):
-    def __init__(self, parent, user):
+    def __init__(self, parent, user, is_self, is_host):
         tk.Frame.__init__(self, parent, highlightbackground = "#E9E9E9", highlightthickness = 1)
         self.user_id = user.id
         self.color = user.color
-        self.username = user.name
+        self.username = user.name + " (You)" if is_self else user.name
         self.is_driver = user.is_host
 
         self.label_str = tk.StringVar()
@@ -23,7 +23,8 @@ class UserListItem(tk.Frame):
         self.make_driver_button.pack(side = tk.RIGHT, padx = 10)
 
         self.driver(self.is_driver)
-        
+        self.enable_button(is_host and not self.is_driver)
+
     def make_driver(self):
         if __name__ != "__main__":
             get_workbench().event_generate("MakeDriver", user = self.user_id)
@@ -40,7 +41,7 @@ class UserListItem(tk.Frame):
         if val == None:
             return self.is_driver
         else:
-            self.label_str.set(self.username + " (Driver)" if val else self.username)
+            self.label_str.set(self.username + " [Driver]" if val else self.username[:- (len("[Driver]") + 1)])
             self.is_driver = val
     
     def enable_button(self, val = True):
@@ -68,7 +69,7 @@ class UserList(ttk.LabelFrame):
             self.add_user(self.users[i])
 
     def add_user(self, user):
-        line = UserListItem(self.scrollable_frame.get_frame(), user)
+        line = UserListItem(self.scrollable_frame.get_frame(), user, self.session.user_id == user.id, self.session.is_host)
         self.scrollable_frame.append(line)
         self.widgets[user.id] = line
 
@@ -82,17 +83,21 @@ class UserList(ttk.LabelFrame):
 
     def update_driver(self, _id):
         is_host = self.session.user_id == _id
-        
-        for line in self.widgets:
-            line.enable_button(is_host and line.user_id != _id)
+
+        if is_host:
+            for line in self.widgets:
+                line.enable_button(line.user_id != _id)
 
     def get_driver(self):
         return self.driver
     
     def set_driver(self, user):
         # set new driver
-        self.widgets[user.id].toggle_driver()
-        self.driver = user.id
+        self.set_driver_id(user.id)
+        
+    def set_driver_id(self, _id):
+        self.widgets[_id].toggle_driver()
+        self.driver = _id
         # remove current driver
         if self.driver >= 0:
             self.widgets[self.driver].toggle_driver()
