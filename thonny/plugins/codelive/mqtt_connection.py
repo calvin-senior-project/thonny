@@ -143,8 +143,8 @@ class MqttConnection(mqtt_client.Client):
             }
         }
 
-        mqtt_publish.single(topic, payload= json.dumps(greeting), hostname = broker)
-        payload = mqtt_subscribe.simple(topic + "/" + reply_url, hostname=broker).payload
+        MqttConnection.single_publish(topic, payload= json.dumps(greeting), hostname = broker)
+        payload = MqttConnection.single_publish(topic + "/" + reply_url, hostname=broker, timeout = 4)
         response = json.loads(payload)
 
         return response
@@ -247,8 +247,8 @@ class MqttConnection(mqtt_client.Client):
             "users": self.session.get_active_users()
         }
         
-        mqtt_publish.single(self.topic + "/" + reply_url, payload=json.dumps(message), hostname=self.broker)
-        # mqtt_subscribe.simple(self.topic + "/" + reply_url + "/success", hostname=self.broker)
+        MqttConnection.single_publish(self.topic + "/" + reply_url, payload=json.dumps(message), hostname=self.broker)
+        # msg = MqttConnection.single_subscribe(self.topic + "/" + reply_url + "/success", hostname=self.broker, timeout == 4)
 
     def Connect(self):
         mqtt_client.Client.connect(self, self.broker, self.port, 60)
