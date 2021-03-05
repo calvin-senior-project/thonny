@@ -5,6 +5,7 @@ import string
 import sys
 import time
 import uuid
+import copy
 
 import paho.mqtt.client as mqtt_client
 import paho.mqtt.publish as mqtt_publish
@@ -100,6 +101,7 @@ def assign_broker(broker_url = None):
         return get_default_broker()
 
 class MqttConnection(mqtt_client.Client):
+    _single_msg = None
     def __init__(self, 
                  session,
                  broker_url, 
@@ -146,6 +148,45 @@ class MqttConnection(mqtt_client.Client):
         response = json.loads(payload)
 
         return response
+
+    @classmethod
+    def single_publish(cls, topic, payload, hostname):
+        mqtt_publish.single(topic, payload= payload, hostname = hostname)
+    
+    @classmethod
+    def single_subscribe(cls, topic, hostname, timeout = None):
+        '''
+        A substitute for paho.mqtt.subscribe.simple. Adds a timeout to messages.
+
+        if timeout is not provided, regular subscribe.simple command will be used
+        '''
+        if timeout == None:
+            return mqtt_subscribe.simple(topic, hostname= hostname).payload
+
+        def on_message(client, data, _msg):
+            if _msg.topic == topic:
+                MqttConnection._single_msg = _msg.payload
+
+        temp_client = mqtt_client.Client()
+        temp_client.on_message = on_message
+        
+        temp_client.connect(host=hostname)
+        temp_client.loop_start()
+        temp_client.subscribe(topic)
+
+        # block as long as the message is None and time hasn't run out
+        start_time = time.perf_counter()
+        while MqttConnection._single_msg == None and time.perf_counter() - start_time < timeout:
+            pass
+        
+        # clean up
+        temp_client.loop_stop()
+        temp_client.disconnect()
+
+        copy_msg = copy.deepcopy(MqttConnection._single_msg)
+        MqttConnection._single_msg = None
+        
+        return copy_msg
 
     def get_port(self):
         return 1883
@@ -252,7 +293,24 @@ if __name__ == "__main__":
             response = MqttConnection.handshake("Jane Doe", temp_topic, temp_broker)
             p = pprint.PrettyPrinter(4)
             p.pprint(response)
-            
+    
+    test_topic = "test_topic"
+    test_broker = "test.mosquitto.org"
+    test_text = "Hello"
+    test_timeout = 10
+
+    def test_single_publish():
+        MqttConnection.single_publish(test_topic, test_text, test_broker)
+    
+    def test_single_subscribe():
+        payload = MqttConnection.single_subscribe(test_topic, test_broker, test_timeout)
+        print(payload)
 
     if sys.argv[1] == "handshake":
         test_handshake()
+
+    if sys.argv[1] == "s_pub":
+        test_single_publish()
+    
+    if sys.argv[1] == "s_sub":
+        test_single_subscribe()
