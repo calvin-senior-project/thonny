@@ -195,6 +195,14 @@ class SessionDialog(tk.Toplevel):
         else:
             self.session_info.update_driver_id(_id)
     
+    def add_user(self, user):
+        line = UserListItem(self.scrollable_frame.get_frame(), user, self.session.user_id == user.id, self.session.is_host)
+        self.scrollable_frame.append(line)
+        self.widgets[user.id] = line
+
+    def remove_user(self, user):
+        self.remove_id(user.id)
+
     def on_closing(self):
         pass
 
@@ -206,8 +214,8 @@ if __name__ == "__main__":
     colors = ["#75DBFF", "#50FF56", "#FF8D75", "#FF50AD", "#FF9B47"]
 
     class DummyUser:
-        def __init__(self, _id, is_host = False):
-            self.name = "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
+        def __init__(self, _id, name = None, is_host = False):
+            self.name = name if name != None else "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
             self.id = _id
             self.position = "1.1"
             self.color = random.choice(colors)
@@ -274,6 +282,26 @@ if __name__ == "__main__":
     elif sys.argv[1] == "list":
         frame = UserList(root, dummySession)
         frame.pack(fill = tk.BOTH, expand = True)
+        t_box = tk.Text(root)
+        t_box.pack(fill = tk.X, expand = True)
+
+        def add():
+            global frame
+            name = t_box.get("0.0", tk.END).strip()
+            if len(name) > 0:
+                usr = DummyUser(random.randint(100, 10000000), name)
+                frame.add(usr)
+        
+        def remove():
+            global frame
+            try:
+                index = int(t_box.get("0.0", tk.END).strip())
+                frame.remove_id(index)
+            except Exception as e:
+                print(e)
+
+        ttk.Button(root, text = "Add", command = add).pack(fill = tk.X, expand = True)
+        ttk.Button(root, text = "Remove", command = remove).pack(fill = tk.X, expand = True)
 
     elif sys.argv[1] == "action":
         frame = ActionList(root, dummySession)

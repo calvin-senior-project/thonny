@@ -7,7 +7,7 @@ class ScrollableFrame(ttk.Frame):
         
         self.canvas = tk.Canvas(self)
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.list = tk.Frame(self.canvas)
+        self.list = ttk.Frame(self.canvas)
         
         self.frame_id = self.canvas.create_window((0, 0), window=self.list, anchor="nw")
         self.canvas.configure(yscrollcommand=scrollbar.set)
