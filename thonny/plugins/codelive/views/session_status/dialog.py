@@ -4,6 +4,8 @@ from tkinter import ttk
 
 from thonny.plugins.codelive.views.session_status.user_list import UserList, UserListItem
 
+SESSION_DIA_MIN_SIZE = {"width": 378, "height": 582}
+
 class SessionInfo(ttk.LabelFrame):
     def __init__(self, parent, session):
         ttk.LabelFrame.__init__(self, parent, width = 100, text = "Session Info")
@@ -53,20 +55,27 @@ class SessionInfo(ttk.LabelFrame):
         self.driver_name.set(name)
 
 class ActionList(ttk.Frame):
-    def __init__(self, parent, session):
+    def __init__(self, parent, session, dia):
         ttk.Frame.__init__(self, parent)
 
+        self.dia = dia
         self.session = session
         self.request_control = tk.Button(self, text = "Request Control", foreground = "green", command = self._request_callback)
         leave = tk.Button(self, text = "Leave Session", foreground = "orange", command = self._leave_callback)
         self.end = tk.Button(self, text = "End Session", foreground = "red", command = self._end_callback)
         
-        self.request_control.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (5, 5), padx = 10)
-        leave.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10)
-        self.end.pack(side = tk.TOP, fill = tk.X, expand = True, pady = (0, 5), padx = 10)
+        self.request_control.grid(row = 0, column = 0, columnspan = 2, pady = (5, 2), padx = 10, sticky = tk.N + tk.E + tk.S + tk.W)
+        leave.grid(row = 1, column = 0, pady = (2, 10), padx = (10, 2), sticky = tk.N + tk.E + tk.S + tk.W)
+        self.end.grid(row = 1, column = 1, pady = (2, 10), padx = (2, 10), sticky = tk.N + tk.E + tk.S + tk.W)
 
-        self.request_control["state"] = tk.NORMAL if session.is_host else tk.DISABLED
+        self.request_control["state"] = tk.DISABLED if session.is_host else tk.NORMAL
         self.end["state"] = tk.NORMAL if session.is_host else tk.DISABLED
+
+        # configure for resize
+        self.columnconfigure(0, weight = 1, minsize = 50)
+        self.columnconfigure(1, weight = 1, minsize = 50)
+        self.rowconfigure(0, weight = 1, minsize = 10)
+        self.rowconfigure(1, weight = 1, minsize = 10)
 
         self.retry_attempt = 0
     
@@ -118,7 +127,6 @@ class ActionList(ttk.Frame):
         
         if ret == 0:
             self.winfo_parent().destroy()
-        
 
 class SessionDialog(tk.Toplevel):
     def __init__(self, parent, session):
@@ -131,16 +139,52 @@ class SessionDialog(tk.Toplevel):
         sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
         self.user_list = UserList(frame, session, text = "Active Users", borderwidth = 1, width = 1000)
         sep2 = ttk.Separator(frame, orient = tk.HORIZONTAL)
-        self.buttons = ActionList(frame, session)
+        self.buttons = ActionList(frame, session, self)
 
-        self.session_info.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = 5, anchor = tk.CENTER)
-        sep1.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 10)
-        self.user_list.pack(side = tk.TOP, fill = tk.BOTH, expand = True, padx = 10, pady = (5, 5))
-        sep2.pack(side = tk.TOP, fill = tk.X, expand= True, padx = 10)
-        self.buttons.pack(side = tk.TOP, fill = tk.X, expand = True, padx = 10, pady = (5, 10))
+        self.session_info.grid(row = 0, column = 0, sticky = tk.N + tk.E + tk.W, padx = 10, pady = 5)
+        sep1.grid(row = 1, column = 0, sticky = tk.E + tk.W, padx = 10)
+        self.user_list.grid(row = 2, column = 0, sticky = tk.N + tk.E + tk.S + tk.W, padx = 10, pady = (5, 5))
+        sep2.grid(row = 3, column = 0, sticky = tk.E + tk.W, padx = 10)
+        self.buttons.grid(row = 4, column = 0, sticky = tk.S + tk.E + tk.W, padx = 10, pady = (5, 10))
 
         frame.pack(fill = tk.BOTH, expand = True)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.minsize(SESSION_DIA_MIN_SIZE["width"], SESSION_DIA_MIN_SIZE["height"])
+        
+        frame.columnconfigure(0, weight = 1)
+        frame.rowconfigure(2, weight = 1)
+        
+        self._initial_place(parent)
+    
+    def _initial_place(self, parent):
+        parent_dim, parent_x, parent_y = parent.geometry().split("+")
+        parent_w, parent_h = (int(l) for l in parent_dim.split("x"))
+
+        parent_x = int(parent_x)
+        parent_y = int(parent_y)
+
+        screen_width = parent.winfo_screenwidth()
+        screen_height = parent.winfo_screenheight()
+
+        w, h = SESSION_DIA_MIN_SIZE["width"], SESSION_DIA_MIN_SIZE["height"]
+        _x = _y = None
+        
+        if screen_width < 10 + parent_x + parent_w + w:
+            _x = screen_width - (w + 10)
+        elif parent_x + parent_w < 0:
+            _x = 10
+        else:
+            _x = 10 + parent_x + parent_w
+        
+        if screen_height < parent_y + h:
+            _y = screen_height - (h + 10)
+        elif parent_y < 0:
+            _y = 10
+        else:
+            _y = parent_y
+
+        self.geometry("%dx%d+%d+%d" % (w, h, _x, _y))
 
     def update_host(self, _id = None):
         self.user_list.update_driver(_id)
