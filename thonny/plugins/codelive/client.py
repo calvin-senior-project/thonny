@@ -17,7 +17,7 @@ import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.mqtt_connection as cmqtt
 import thonny.plugins.codelive.utils as utils
 
-from thonny.plugins.codelive.user import User, UserEncoder
+from thonny.plugins.codelive.user import User, UserEncoder, UserDecoder
 from thonny.plugins.codelive.views.session_status.dialog import SessionDialog
 
 MSGLEN = 2048
@@ -76,6 +76,21 @@ class Session:
 
         self._debug = debug
         print("methods replaced")
+        
+        # if not host notify host that you joined
+        if not is_host:
+            success_message = {
+                "id": self.user_id,
+                "instr": {
+                    "type": "success",
+                    "user": self._users[self.user_id]
+                }
+            }
+            cmqtt.MqttConnection.single_publish(self._connection.topic + "/" + str(self.get_driver()[0]),
+                                                UserEncoder.encode(success_message),
+                                                hostname= self._connection.broker)
+        
+        self.dialog = SessionDialog(WORKBENCH, self)
 
     @classmethod
     def create_session(cls, name, topic, broker = None, shared_editors = None, debug = False):
@@ -89,9 +104,9 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
-        print("handshake complete")
         shared_editors = utils.intiialize_documents(current_state["docs"])
-        print("editors retrieved")
+        users = UserDecoder.decode(current_state["users"])
+
         return Session(_id = current_state["id_assigned"],
                        name = current_state["name"],
                        topic = topic,

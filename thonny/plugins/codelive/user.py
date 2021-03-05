@@ -78,12 +78,33 @@ class UserEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, User):
             return {
-                "name": o.name,
-                "id": o.id,
-                "position": o.position,
-                "color" : o.color,
-                "is_host": o.is_host
+                "_type": "User",
+                "value": {
+                    "name": o.name,
+                    "id": o.id,
+                    "doc_id": o.doc_id,
+                    "position": o.position,
+                    "color": o.color,
+                    "is_host": o.is_host
+                }
             }
             
         else:
             return super().default(o)
+
+class UserDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, obj):
+        if '_type' not in obj:
+            return obj
+        type = obj['_type']
+        if type == 'User':
+            data = obj["value"]
+            return User(_id = data["id"],
+                        name = data["name"],
+                        doc_id = data["doc_id"],
+                        color = data["color"],
+                        is_host= data["is_host"])
+        return obj
