@@ -5,23 +5,28 @@ class ScrollableFrame(ttk.Frame):
     def __init__(self, master=None, *cnf, **kw):
         ttk.Frame.__init__(self, master=master, *cnf, **kw)
         
-        canvas = tk.Canvas(self)
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        self.list = tk.Frame(canvas)
-
-        self.list.bind("<Configure>",
-                lambda e: canvas.configure(
-                    scrollregion=canvas.bbox("all"),
-                    # width = max([x["width"] for x in self.list_children])
-                )
-            )
+        self.canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.list = tk.Frame(self.canvas)
         
-        canvas.create_window((0, 0), window=self.list, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self.frame_id = self.canvas.create_window((0, 0), window=self.list, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
         self.list_children = list()
 
-        canvas.pack(side="left", fill="both", expand=True)
+        self.list.bind("<Configure>", self._on_list_resize)
+        self.canvas.bind("<Configure>", self._on_canvas_resize)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
+    def _on_list_resize(self, event):
+        self.canvas.configure(
+            scrollregion=self.canvas.bbox("all"),
+            width = max([x["width"] for x in self.list_children])
+        )
+
+    def _on_canvas_resize(self, event):
+        self.canvas.itemconfigure (self.frame_id, width = event.width)
     
     def get_frame(self):
         return self.list

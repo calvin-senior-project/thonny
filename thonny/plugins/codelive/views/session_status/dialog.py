@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from thonny.plugins.codelive.views.session_status.user_list import UserList, UserListItem
 
-SESSION_DIA_MIN_SIZE = {"width": 378, "height": 582}
+SESSION_DIA_MIN_SIZE = {"width": 378, "height": 400}
 
 class SessionInfo(ttk.LabelFrame):
     def __init__(self, parent, session):
@@ -219,12 +219,13 @@ if __name__ == "__main__":
 
     class DummySession:
         def __init__(self, is_host = False):
-            self._users = {i : DummyUser(i) for i in range(0, 10)}
+            self.user_id = 0
+            self._users = {i : DummyUser(i) for i in range(1, 10)}
             self.username = "John Doe"
             self.is_host = is_host
 
             if self.is_host == False:
-                self._users[random.randint(0, 9)].is_host = True
+                self._users[random.randint(1, 9)].is_host = True
 
         def get_connection_info(self):
             return {"name" : self.username,
@@ -233,14 +234,14 @@ if __name__ == "__main__":
         
         def get_driver(self):
             if self.is_host:
-                return "You"
+                return 0, "You"
             
             else:
                 for i in self._users:
                     if self._users[i].is_host == True:
-                        return self._users[i].name
+                        return i, self._users[i].name
             
-            return "null"
+            return -1, "null"
         
         def get_users(self):
             return self._users
