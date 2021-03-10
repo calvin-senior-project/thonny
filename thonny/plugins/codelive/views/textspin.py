@@ -60,8 +60,10 @@ class TextSpin(ttk.Frame):
         if s == None:
             # if mode is None, dict containing value for both will be returned
             if mode == None:
-                return {"text": self.text.get("0.0", tk.END).strip(),
-                        "option": self.option_val.get()}
+                if self.text.winfo_ismapped():
+                    return self.text.get("0.0", tk.END).strip()
+                else:
+                    return self.option_val.get()
             
             else:
                 if mode == "text":

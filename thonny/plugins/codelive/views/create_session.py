@@ -220,8 +220,8 @@ class CreateSessionDialog(tk.Toplevel):
     def start_callback(self):
         name = self.name_input.val()
         topic = self.topic_input.val()
-        broker_val = self.broker_input.val()
-        broker = broker_val[broker_val["active"]]
+        broker = self.broker_input.val()
+        print(broker)
 
         if self.valid_name(name) and self.valid_connection(topic, broker) and self.valid_selection():
             self.data["name"] = name
