@@ -231,7 +231,8 @@ class MqttConnection(mqtt_client.Client):
             "unique_code": unique_code,
             "id_assigned": id_assignment
         }
-        mqtt_client.Client.publish(self, self.topic, payload = json.dumps(send_msg))
+        mqtt_client.Client.publish(self, self.topic, 
+                                   payload = json.dumps(send_msg, cls = UserEncoder))
 
     def respond_to_handshake(self, sender_id, reply_url, name):
         
@@ -252,13 +253,14 @@ class MqttConnection(mqtt_client.Client):
             "users": self.session.get_active_users(False)
         }
 
-        print(json.dumps(message, cls = UserEncoder))
-        MqttConnection.single_publish(self.topic + "/" + reply_url, payload=json.dumps(message, cls=UserEncoder), hostname=self.broker)
-        # msg = MqttConnection.single_subscribe(self.topic + "/" + reply_url + "/success", hostname=self.broker, timeout == 4)
+        MqttConnection.single_publish(self.topic + "/" + reply_url, 
+                                      payload= json.dumps(message, cls = UserEncoder), 
+                                      hostname=self.broker)
 
     def addressed_msg(self, msg):
         print("in addressed")
-        json_msg = json.loads(msg, cls=UserDecoder) # UserDecoder().decode(msg)
+        json_msg = json.loads(msg, cls=UserDecoder)
+
         instr = json_msg["instr"]
         if self.session.is_host and instr["type"] == "success":
             user = instr["user"]

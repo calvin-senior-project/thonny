@@ -56,7 +56,7 @@ def get_instr_direct(event, editor_id, user_id = -1, cursor_pos = "", in_insert 
     
     if debug:
         print(instr)
-    return json.dumps(instr)
+    return instr
 
 def get_instr_latent(event, editor_id, is_insert, user_id = -1, debug = False):
     print("latent")
@@ -85,7 +85,7 @@ def get_instr_latent(event, editor_id, is_insert, user_id = -1, debug = False):
             instr["user"] = user_id
             instr["user_pos"] = event.cursor_after_change
             instr["doc"] = editor_id    
-    return json.dumps(instr)
+    return instr
 
 def get_new_id():
     global MIN_FREE_ID
