@@ -16,6 +16,7 @@ from thonny.tktextext import EnhancedText
 import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.mqtt_connection as cmqtt
 import thonny.plugins.codelive.utils as utils
+import thonny.plugins.codelive.user_management as manageMqtt
 
 from thonny.plugins.codelive.user import User, UserEncoder, UserDecoder
 from thonny.plugins.codelive.views.session_status.dialog import SessionDialog
@@ -436,6 +437,10 @@ class Session:
     def start_session(self):
         self._connection.Connect()
         self._connection.loop_start()
+        mqttManager = manageMqtt.MqttUserManagement(self._connection.session,self._connection.broker, self._connection.port, self._connection.qos,self._connection.delay,self._connection.topic)
+        mqttManager.Connect()
+        mqttManager.loop_start()
+        #mqttManager.request_control()
 
 
 if __name__ == "__main__":
