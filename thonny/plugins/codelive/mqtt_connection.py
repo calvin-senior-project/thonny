@@ -14,6 +14,7 @@ import paho.mqtt.subscribe as mqtt_subscribe
 import thonny.plugins.codelive.utils as utils
 import thonny.plugins.codelive.client as thonny_client
 
+from thonny.plugins.codelive.user import UserDecoder, UserEncoder
 from thonny import get_workbench
 
 WORKBENCH = get_workbench()
@@ -144,8 +145,8 @@ class MqttConnection(mqtt_client.Client):
         }
 
         MqttConnection.single_publish(topic, payload= json.dumps(greeting), hostname = broker)
-        payload = MqttConnection.single_publish(topic + "/" + reply_url, hostname=broker, timeout = 4)
-        response = json.loads(payload)
+        payload = MqttConnection.single_subscribe(topic + "/" + reply_url, hostname=broker, timeout = 4)
+        response = json.loads(payload, cls = UserDecoder)
 
         return response
 
@@ -192,11 +193,14 @@ class MqttConnection(mqtt_client.Client):
         return 1883
 
     def on_message(self, client, data, msg):
+        if msg.topic == self.topic + "/" + str(self.session.user_id):
+            self.addressed_msg(msg.payload)
+
         if msg.topic != self.topic:
             return
 
-        json_msg = json.loads(msg.payload)
-
+        json_msg = json.loads(msg.payload, cls = UserDecoder)
+        print(json_msg)
         try:
             sender_id = get_sender_id(json_msg)
             instr = get_instr(json_msg)
@@ -206,9 +210,9 @@ class MqttConnection(mqtt_client.Client):
         if sender_id == self.session.user_id:
             print("instr ignored")
             return
-        
+
         # on join request
-        if instr["type"] and self.session.is_host:
+        if instr["type"] == "join" and self.session.is_host:
             self.respond_to_handshake(sender_id, instr["reply"], instr["name"])
         
         # on edit
@@ -216,8 +220,9 @@ class MqttConnection(mqtt_client.Client):
             WORKBENCH.event_generate("RemoteChange", change=instr)
         
         # On new user signal only sent by host 
-        elif msg["type"] == "new_join":
-            self.session.add_new_user(json_msg)
+        elif instr["type"] == "new_join":
+            if instr["user"].id != self.session.user_id:
+                self.session.add_user(instr["user"])
     
     def publish(self, msg = None, id_assignment = None, unique_code =  None):
         send_msg = {
@@ -244,15 +249,27 @@ class MqttConnection(mqtt_client.Client):
             "name": get_unique_name(name),
             "id_assigned": assigned_id,
             "docs": self.session.get_docs(),
-            "users": self.session.get_active_users()
+            "users": self.session.get_active_users(False)
         }
-        
-        MqttConnection.single_publish(self.topic + "/" + reply_url, payload=json.dumps(message), hostname=self.broker)
+
+        print(json.dumps(message, cls = UserEncoder))
+        MqttConnection.single_publish(self.topic + "/" + reply_url, payload=json.dumps(message, cls=UserEncoder), hostname=self.broker)
         # msg = MqttConnection.single_subscribe(self.topic + "/" + reply_url + "/success", hostname=self.broker, timeout == 4)
+
+    def addressed_msg(self, msg):
+        print("in addressed")
+        json_msg = json.loads(msg, cls=UserDecoder) # UserDecoder().decode(msg)
+        instr = json_msg["instr"]
+        if self.session.is_host and instr["type"] == "success":
+            user = instr["user"]
+            self.session.add_user_host(user)
 
     def Connect(self):
         mqtt_client.Client.connect(self, self.broker, self.port, 60)
         mqtt_client.Client.subscribe(self, self.topic, qos=self.qos)
+
+        if self.session.is_host:
+            mqtt_client.Client.subscribe(self, self.topic + "/" + str(self.session.user_id), qos=self.qos)
     
     def get_sender(self, msg):
         pass
@@ -293,7 +310,7 @@ if __name__ == "__main__":
             response = MqttConnection.handshake("Jane Doe", temp_topic, temp_broker)
             p = pprint.PrettyPrinter(4)
             p.pprint(response)
-    
+            
     test_topic = "test_topic"
     test_broker = "test.mosquitto.org"
     test_text = "Hello"

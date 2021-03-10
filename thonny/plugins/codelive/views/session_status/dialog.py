@@ -196,12 +196,10 @@ class SessionDialog(tk.Toplevel):
             self.session_info.update_driver_id(_id)
     
     def add_user(self, user):
-        line = UserListItem(self.scrollable_frame.get_frame(), user, self.session.user_id == user.id, self.session.is_host)
-        self.scrollable_frame.append(line)
-        self.widgets[user.id] = line
+        self.user_list.add_user(user)
 
     def remove_user(self, user):
-        self.remove_id(user.id)
+        self.user_list.remove_id(user.id)
 
     def on_closing(self):
         pass

@@ -110,6 +110,7 @@ def null_cmd(event):
 
 def get_commands():
     global session
+    commnads = None
     commands = {
         19: [
             {

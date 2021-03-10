@@ -77,19 +77,6 @@ class Session:
         self._debug = debug
         print("methods replaced")
         
-        # if not host notify host that you joined
-        if not is_host:
-            success_message = {
-                "id": self.user_id,
-                "instr": {
-                    "type": "success",
-                    "user": self._users[self.user_id]
-                }
-            }
-            cmqtt.MqttConnection.single_publish(self._connection.topic + "/" + str(self.get_driver()[0]),
-                                                UserEncoder.encode(success_message),
-                                                hostname= self._connection.broker)
-        
         self.dialog = SessionDialog(WORKBENCH, self)
 
     @classmethod
@@ -104,13 +91,15 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
+        print(current_state)
         shared_editors = utils.intiialize_documents(current_state["docs"])
-        users = UserDecoder.decode(current_state["users"])
+        users = {user.id : user for user in current_state["users"]}
 
         return Session(_id = current_state["id_assigned"],
                        name = current_state["name"],
                        topic = topic,
                        broker = broker,
+                       users = users,
                        shared_editors = shared_editors)
     
     def _add_self(self, is_host):
@@ -118,6 +107,34 @@ class Session:
         me = User(self.user_id, self.username, current_doc, is_host= is_host)
         self._users[self.user_id] = me
 
+        # if not host notify host that you joined
+        if not is_host:
+            success_message = {
+                "id": self.user_id,
+                "instr": {
+                    "type": "success",
+                    "user": me
+                }
+            }
+            cmqtt.MqttConnection.single_publish(self._connection.topic + "/" + str(self.get_driver()[0]),
+                                                UserEncoder().encode(success_message),
+                                                hostname= self._connection.broker)
+
+    def add_user(self, user):
+        self._users[user.id] = user
+        self.dialog.add_user(user)
+    
+    def add_user_host(self, user):
+        self.add_user(user)
+        msg = {
+            "id": self.user_id,
+            "instr": {
+                "type": "new_join",
+                "user": user
+            }
+        }
+
+        self.send(UserEncoder().encode(msg))
 
     def request_control(self):
         '''
@@ -203,7 +220,7 @@ class Session:
     
     def get_active_users(self, in_json = True):
         if in_json == False:
-            return self._users.values()
+            return list(self._users.values())
         
         return UserEncoder().encode(self._users)
 

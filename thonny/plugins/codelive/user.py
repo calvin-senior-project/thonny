@@ -60,6 +60,16 @@ class User:
                 return True
             else:
                 return False
+    
+    def __str__(self):
+        return str({
+            "name": self.name,
+            "id": self.id,
+            "doc_id": self.doc_id,
+            "position": self.position,
+            "color" : self.color,
+            "is_host": self.is_host
+        })
 
     def position(self, doc_id = None, position = None):
         if position and doc_id:
@@ -84,7 +94,7 @@ class UserEncoder(json.JSONEncoder):
                     "id": o.id,
                     "doc_id": o.doc_id,
                     "position": o.position,
-                    "color": o.color,
+                    "color" : o.color,
                     "is_host": o.is_host
                 }
             }

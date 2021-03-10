@@ -9,10 +9,11 @@ class UserListItem(tk.Frame):
         tk.Frame.__init__(self, parent, highlightbackground = "#E9E9E9", highlightthickness = 1)
         self.user_id = user.id
         self.color = user.color
+        self.username = user.name + " (You)" if is_self else user.name
         self.is_driver = user.is_host
 
         self.label_str = tk.StringVar()
-        self.label_str.set(user.name + " (You)" if is_self else user.name)
+        self.label_str.set(self.username)
 
         icon = self.create_icon()
         name_label = tk.Label(self, textvariable = self.label_str, anchor = "w")
