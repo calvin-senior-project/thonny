@@ -118,7 +118,7 @@ class Session:
                 }
             }
             cmqtt.MqttConnection.single_publish(self._connection.topic + "/" + str(self.get_driver()[0]),
-                                                UserEncoder().encode(success_message),
+                                                json.dumps(success_message, cls = UserEncoder),
                                                 hostname= self._connection.broker)
 
     def add_user(self, user):
@@ -128,14 +128,11 @@ class Session:
     def add_user_host(self, user):
         self.add_user(user)
         msg = {
-            "id": self.user_id,
-            "instr": {
-                "type": "new_join",
-                "user": user
-            }
+            "type": "new_join",
+            "user": user
         }
 
-        self.send(UserEncoder().encode(msg))
+        self.send(msg)
 
     def request_control(self):
         '''
@@ -219,11 +216,11 @@ class Session:
         
         return json_form
     
-    def get_active_users(self, in_json = True):
+    def get_active_users(self, in_json = False):
         if in_json == False:
             return list(self._users.values())
         
-        return UserEncoder().encode(self._users)
+        return json.dumps((self._users.values()), cls = UserEncoder)
 
     def replace_insert_delete(self):
         defn_saved = False
@@ -285,7 +282,7 @@ class Session:
             "user_pos": event.widget.index(tk.INSERT),
             "doc": editor_id
         }
-        self.send(json.dumps(instr))
+        self.send(instr)
     
     def broadcast_insert(self, event):
         editor = WORKBENCH.get_editor_notebook().get_current_editor()
@@ -388,7 +385,7 @@ class Session:
         return self._users
     
     def apply_remote_changes(self, event):
-        msg = json.loads(event.change)
+        msg = event.change
         
         codeview = None
     
