@@ -21,6 +21,7 @@ import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.utils as utils
 
 WORKBENCH = get_workbench()
+MENU_NAME = "CodeLive"
 session = None
 
 DEBUG = True
@@ -105,7 +106,7 @@ def get_commands():
         19: [
             {
                 "command_id": "codelive",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Start a Live Collaboration Session",
                 "handler" : toolbar_callback,
                 "position_in_group": "end",
@@ -122,7 +123,7 @@ def get_commands():
         20: [
             {
                 "command_id": "codelive_host",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Create a New Session",
                 "handler" : create_session,
                 "position_in_group": "end",
@@ -136,7 +137,7 @@ def get_commands():
             },
             {
                 "command_id": "codelive_join",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Join an Existing Session",
                 "handler" : join_session,
                 "position_in_group": "end",
@@ -151,7 +152,7 @@ def get_commands():
             # For testing only
             {
                 "command_id": "codelive_host_t",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Create Test",
                 "handler" : create_session_vanilla,
                 "position_in_group": "end",
@@ -166,7 +167,7 @@ def get_commands():
             # For testing only
             {
                 "command_id": "codelive_join_t",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Join Test",
                 "handler" : join_session_vanilla,
                 "position_in_group": "end",
@@ -183,7 +184,7 @@ def get_commands():
         21 : [
             {
                 "command_id": "codelive_end",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "End Session",
                 "handler" : end_session,
                 "position_in_group": "end",
@@ -197,7 +198,7 @@ def get_commands():
             },
             {
                 "command_id": "codelive_leave",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Leave Session",
                 "handler" : leave_session,
                 "position_in_group": "end",
@@ -213,7 +214,7 @@ def get_commands():
         22 : [
             {
                 "command_id": "codelive_show",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Show Current Session",
                 "handler" : session_status,
                 "position_in_group": "end",
@@ -229,7 +230,7 @@ def get_commands():
         23 : [
             {
                 "command_id": "codelive_help",
-                "menu_name": "Codelive",
+                "menu_name": MENU_NAME,
                 "command_label": "Help",
                 "handler" : session_status,
                 "position_in_group": "end",
