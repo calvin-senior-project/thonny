@@ -100,7 +100,7 @@ class CreateSessionDialog(tk.Toplevel):
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent)
         self.protocol("WM_DELETE_WINDOW", self.cancel_callback)
-        self.title("Create Live Session")
+        self.title("Create Live Session - Beta")
 
         frame = ttk.Frame(self)
 

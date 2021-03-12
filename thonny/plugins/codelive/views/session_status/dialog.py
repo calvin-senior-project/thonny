@@ -131,7 +131,7 @@ class ActionList(ttk.Frame):
 class SessionDialog(tk.Toplevel):
     def __init__(self, parent, session):
         tk.Toplevel.__init__(self)
-        self.title("Current Session")
+        self.title("Current Session - Beta")
         frame = ttk.Frame(self)
 
         self.session = session
