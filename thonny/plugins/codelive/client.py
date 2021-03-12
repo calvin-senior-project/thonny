@@ -61,8 +61,8 @@ class Session:
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
         
         # bindings
-        self._bind_event(WORKBENCH, "RemoteChange", self.apply_remote_changes)
-        self.bind_events()
+        self.bind_event(WORKBENCH, "RemoteChange", self.apply_remote_changes)
+        self.bind_locals()
         self.bind_cursor_callbacks()
         print("events bound")
 
@@ -107,7 +107,7 @@ class Session:
                        users = users,
                        shared_editors = shared_editors)
     
-    def _bind_event(self, widget, seq, handler, override = True, debug = False):
+    def bind_event(self, widget, seq, handler, override = True, debug = False):
         if debug:
             print("Binding Widget: %s to seq: %s with handler: %s..." %
                     (str(widget), str(seq), str(handler)))
@@ -299,7 +299,7 @@ class Session:
             widget.delete = types.MethodType(pc.patched_delete, widget)
     
     # For all
-    def bind_events(self):
+    def bind_locals(self):
         '''
         Bind keypress binds the events from components with callbacks. The function keys 
         associated with the bindings are returned as values of a dictionary whose keys are string of
@@ -308,10 +308,10 @@ class Session:
         If the event is bound to a widget, the name of the widget is "editor_<the editor's assigned id>". 
         '''
         for widget in self._shared_editors["txt_first"]:
-            self._bind_event(widget, "<KeyPress>", self.broadcast_keypress, True)
+            self.bind_event(widget, "<KeyPress>", self.broadcast_keypress, True)
         
-        self._bind_event(get_workbench(), "LocalInsert", self.broadcast_insert, True)
-        self._bind_event(get_workbench(), "LocalDelete", self.broadcast_delete, True)
+        self.bind_event(get_workbench(), "LocalInsert", self.broadcast_insert, True)
+        self.bind_event(get_workbench(), "LocalDelete", self.broadcast_delete, True)
 
     def _cursor_blink(self):
         '''
@@ -393,12 +393,12 @@ class Session:
 
         for text_widget in self._shared_editors["txt_first"]:
             
-            self._bind_event(text_widget, "<KeyRelease-Left>", self.boradcast_cursor_motion, True)
-            self._bind_event(text_widget, "<KeyRelease-Right>", self.boradcast_cursor_motion, True)
-            self._bind_event(text_widget, "<KeyRelease-Up>", self.boradcast_cursor_motion, True)
-            self._bind_event(text_widget, "<KeyRelease-Down>", self.boradcast_cursor_motion, True)
-            self._bind_event(text_widget, "<KeyRelease-Return>", self.boradcast_cursor_motion, True)
-            self._bind_event(text_widget, "<ButtonRelease-1>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<KeyRelease-Left>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<KeyRelease-Right>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<KeyRelease-Up>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<KeyRelease-Down>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<KeyRelease-Return>", self.boradcast_cursor_motion, True)
+            self.bind_event(text_widget, "<ButtonRelease-1>", self.boradcast_cursor_motion, True)
 
     def enable_editing(self):
         for text_widget in self._shared_editors["txt_first"]:
@@ -424,6 +424,9 @@ class Session:
         
         return -1, "null"
     
+    def new_host(self, user_id):
+        pass
+
     def be_host(self):
         pass
 

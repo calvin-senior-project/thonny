@@ -83,9 +83,6 @@ def leave_session():
 def session_status():
     pass
 
-def null_cmd(event):
-    print("hi")
-
 def live_session():
     global session
     return session != None
@@ -101,6 +98,8 @@ def toolbar_callback():
 
 def get_commands():
     global session
+    global MENU_NAME
+
     commnads = None
     commands = {
         19: [
