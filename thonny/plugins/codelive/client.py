@@ -16,6 +16,7 @@ from thonny.tktextext import EnhancedText
 import thonny.plugins.codelive.patched_callbacks as pc
 import thonny.plugins.codelive.mqtt_connection as cmqtt
 import thonny.plugins.codelive.utils as utils
+import thonny.plugins.codelive.user_management as userManMqtt
 
 from thonny.plugins.codelive.user import User, UserEncoder, UserDecoder
 from thonny.plugins.codelive.views.session_status.dialog import SessionDialog
@@ -57,11 +58,15 @@ class Session:
         self.is_host = is_host
         self.is_cohost = is_cohost
 
+        self.user_man = userManMqtt.MqttUserManagement(self._connection.session,self._connection.broker, self._connection.port, self._connection.qos,self._connection.delay,self._connection.topic)
+
+
         # service threads
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
         
         # bindings
         self.bind_event(WORKBENCH, "RemoteChange", self.apply_remote_changes)
+        self.bind_event(WORKBENCH, "MakeDriver", self.request_give)
         self.bind_locals()
         self.bind_cursor_callbacks()
         print("events bound")
@@ -209,7 +214,12 @@ class Session:
         In a general error, returns 3, and error object
         '''
         # user_man.request_control()
-        pass
+        self.user_man.request_control()
+        return 0
+
+    def request_give(self, event):
+        self.user_man.request_give(event.user)
+        return 0
 
     def leave(self):
         '''
@@ -504,6 +514,8 @@ class Session:
     def start_session(self):
         self._connection.Connect()
         self._connection.loop_start()
+        self.user_man.Connect()
+        self.user_man.loop_start()
 
 if __name__ == "__main__":
 
