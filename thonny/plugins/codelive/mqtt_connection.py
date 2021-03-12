@@ -200,11 +200,11 @@ class MqttConnection(mqtt_client.Client):
             return
 
         json_msg = json.loads(msg.payload, cls = UserDecoder)
+        print(json_msg)
         try:
             sender_id = get_sender_id(json_msg)
-            instr = json.loads(get_instr(json_msg))
-        except:
             instr = get_instr(json_msg)
+        except:
             print("WARNING: missing instr/sender id")
 
         if sender_id == self.session.user_id:
@@ -217,7 +217,7 @@ class MqttConnection(mqtt_client.Client):
         
         # on edit
         elif instr["type"] in ("I", "D", "M"):
-            WORKBENCH.event_generate("RemoteChange", change=json.dumps(instr))
+            WORKBENCH.event_generate("RemoteChange", change=instr)
         
         # On new user signal only sent by host 
         elif instr["type"] == "new_join":

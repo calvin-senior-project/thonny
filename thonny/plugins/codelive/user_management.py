@@ -3,6 +3,10 @@ import uuid
 import paho.mqtt.client as mqtt_client
 import paho.mqtt.publish as mqtt_publish
 import paho.mqtt.subscribe as mqtt_subscribe
+import tkinter as tk
+import time
+
+from thonny import get_workbench
 
 import thonny.plugins.codelive.mqtt_connection as mqttc
 
@@ -50,13 +54,18 @@ class MqttUserManagement(mqtt_client.Client):
             return
    
         if json_msg['type'] == 'request_control':
-            self.respond_to_request(json_msg) 
+            if tk.messagebox.askokcancel(parent = get_workbench(),
+                                     title = "Control Request",
+                                     message = "Make " + json_msg['name'] + " host?"): #add a timeout on this?
+                self.respond_to_request(json_msg, True) 
         
+        if json_msg['type'] == 'request_give':
+            if tk.messagebox.askokcancel(parent = get_workbench(),
+                                     title = "Control Request",
+                                     message = "Accept host-handoff from " + json_msg['name'] + "?"): #add a timeout on this?
+                self.respond_to_request(json_msg, True) 
+                
 
-       # instr = get_instr(json_msg)
-       # if msg.topic == self.users_topic and instr:
-           # print(instr, sender_id, "They have joined")
-            #WORKBENCH.event_generate("RemoteChange", change=instr)
     
     def publish(self, msg = None, id_assignment = None, unique_code =  None):
         send_msg = {
@@ -65,41 +74,82 @@ class MqttUserManagement(mqtt_client.Client):
         }
         mqtt_client.Client.publish(self, self.users_topic, payload = json.dumps(send_msg))
 
-    def give_control(self, give_id):
-        pass
 
-    def respond_to_give(self):
-        pass
-
-    def request_control(self):
-        host_id, host_name = self.session.get_driver()
-        print(host_id,host_name)
-        if host_id in {-1, self.session.user_id}:
-            return
+    def request_give(self,targetID, timeout):
+        time.sleep(30)
+        if targetID not in self.session._users or targetID == self.session.user_id:
+            return 3
         reply_url = str(uuid.uuid4())
         request = {
             "id" : str(self.session.user_id),
+            "name": self.session.name,
+            "reply": reply_url,
+            "type": "request_give"
+        }
+        print("request_give")
+        mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(targetID), json.dumps(request), self.broker)
+        payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, timeout)
+
+        if payload == "":
+            return 2
+        try:
+            response = json.loads(payload)
+            if response['id'] == str(self.session.user_id) and response['approved'] == True:
+                print("yes")
+                return 0
+            elif response['id'] == str(self.session.user_id) and response['approved'] == False:
+                return 1
+        except Exception:
+            pass
+        return 3
+    
+    def respond_to_give(self,json_msg, approved):
+        response = {
+            "id" : json_msg["id"],
+            "approved": approved,
+            "type": "request_give"
+        }
+        print("Responding...")
+        mqtt_publish.single(self.users_topic + "/" + json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
+
+    def request_control(self, timeout):
+        host_id, host_name = self.session.get_driver()
+        if host_id in {-1, self.session.user_id}:
+            return 3
+        reply_url = str(uuid.uuid4())
+        request = {
+            "id" : str(self.session.user_id),
+            "name": self.session.name,
             "reply": reply_url,
             "type": "request_control"
         }
 
-        mqtt_publish.single(self.users_topic + "/" + str(host_id), payload= json.dumps(request), hostname = self.broker)
-        payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, 1)
-        #payload = mqtt_subscribe.simple(self.users_topic + "/" + reply_url, hostname=self.broker).payload
-        response = json.loads(payload)
-        print(response)
-        if response['id'] == self.session.user_id and response['approved'] == True:
-            print("Sucess")
+        mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(host_id), json.dumps(request), self.broker)
+        payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, timeout)
+
+        if payload == "":
+            return 2
+        try:
+            response = json.loads(payload)
+            if response['id'] == str(self.session.user_id) and response['approved'] == True:
+                print("yes")
+                return 0
+            elif response['id'] == str(self.session.user_id) and response['approved'] == False:
+                return 1
+        except Exception:
+            pass
+        return 3
 
 
-    def respond_to_request(self, json_msg):
+    def respond_to_request(self, json_msg, approved):
         response = {
             "id" : json_msg["id"],
-            "approved": True,
+            "approved": approved,
             "type": "request_control"
         }
 
         mqtt_publish.single(self.users_topic + "/" + json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
+
 
 
         

@@ -102,7 +102,7 @@ class ActionList(ttk.Frame):
             ret = messagebox.askretrycancel("Request rejected", "Your request was rejected. Do you want to request control again?")
             if ret:
                 if self.retry_attempt >= 5:
-                    messagebox.showerror("Unable to Join", "You cannot request control at the moment. Pleas try again later.")
+                    messagebox.showerror("Unable to Join", "You cannot request control at the moment. Please try again later.")
                 else:
                     self._request_callback()
 
