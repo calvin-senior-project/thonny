@@ -22,6 +22,7 @@ import thonny.plugins.codelive.utils as utils
 
 WORKBENCH = get_workbench()
 session = None
+
 DEBUG = True
 
 def start_session():
@@ -42,6 +43,7 @@ def start_session():
     return (top.get_session_mode(), 0)
 
 def create_session_vanilla(data = None):
+    global session
     data_session = data or {
         "name": "Host Doe",
         "topic": "test_topic_1234",
@@ -75,6 +77,7 @@ def toolbar_callback():
         menu.grab_release()
 
 def join_session_vanilla(data = None):
+    global session
     data_sess = data or {
         "name": "Join Doe",
         "topic": "test_topic_1234",
@@ -108,6 +111,10 @@ def session_status():
 def null_cmd(event):
     print("hi")
 
+def live_session():
+    global session
+    return session != None
+
 def get_commands():
     global session
     commnads = None
@@ -119,6 +126,7 @@ def get_commands():
                 "command_label": "Start a Live Collaboration Session",
                 "handler" : toolbar_callback,
                 "position_in_group": "end",
+                "tester": None,
                 "image" : os.path.join(os.path.dirname(__file__), "res/people-yellow-small.png"),
                 "caption" : "CodeLive: MQTT based collaboration plugin",
                 "include_in_menu" : False,
@@ -136,6 +144,7 @@ def get_commands():
                 "handler" : create_session,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": lambda: not live_session(),
                 "caption" : "Create new collaborative session",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -149,6 +158,7 @@ def get_commands():
                 "handler" : join_session,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": lambda: not live_session(),
                 "caption" : "Join an existing collaborative session",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -163,6 +173,7 @@ def get_commands():
                 "handler" : create_session_vanilla,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": lambda: not live_session(),
                 "caption" : "Create Test",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -177,6 +188,7 @@ def get_commands():
                 "handler" : join_session_vanilla,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": lambda: not live_session(),
                 "caption" : "Join Test",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -193,6 +205,7 @@ def get_commands():
                 "handler" : end_session,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": live_session,
                 "caption" : "End current session (for Hosts only)",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -206,6 +219,7 @@ def get_commands():
                 "handler" : leave_session,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": live_session,
                 "caption" : "Leave current session (for Hosts only)",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -221,6 +235,7 @@ def get_commands():
                 "handler" : session_status,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": live_session,
                 "caption" : "Show the status of the current session",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -236,6 +251,7 @@ def get_commands():
                 "handler" : session_status,
                 "position_in_group": "end",
                 "image" : None,
+                "tester": None,
                 "caption" : "Show Help for How to use Codelive",
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
@@ -258,29 +274,15 @@ def add_menu_items():
                                     handler = item["handler"],
                                     position_in_group= item["position_in_group"],
                                     image = item["image"],
-                                    caption = item["caption"],
-                                    include_in_menu= item["include_in_menu"],
-                                    include_in_toolbar = item["include_in_toolbar"],
-                                    bell_when_denied = item["bell_when_denied"])
-    # for 
-    #     pass
-
-def load_plugin():
-    groups = get_commands()
-    
-    for group in sorted(groups.keys()):
-        for item in groups[group]:
-            WORKBENCH.add_command(command_id = item["command_id"],
-                                    menu_name = item["menu_name"],
-                                    command_label = item["command_label"],
-                                    handler = item["handler"],
-                                    position_in_group= item["position_in_group"],
-                                    image = item["image"],
+                                    tester = item["tester"],
                                     group = group,
                                     caption = item["caption"],
                                     include_in_menu= item["include_in_menu"],
                                     include_in_toolbar = item["include_in_toolbar"],
                                     bell_when_denied = item["bell_when_denied"])
+
+def load_plugin():
+    add_menu_items()
 
     EnhancedText.insert = pc.patched_insert
     EnhancedText.delete = pc.patched_delete
