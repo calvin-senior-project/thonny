@@ -65,10 +65,13 @@ class Session:
         
         # bindings
         WORKBENCH.bind("RemoteChange", self.apply_remote_changes)
+        WORKBENCH.bind("MakeDriver", self.request_give)
         self._callback_ids = {
             "text": self.bind_events(),
             "cursor": self.bind_cursor_callbacks()
         }
+
+
         print("events bound")
         self.initialized = False
         
@@ -147,13 +150,13 @@ class Session:
         In a general error, returns 3, and error object
         '''
         # user_man.request_control()
-        status = self.user_man.request_control(30)
-        return status
+        self.user_man.request_control()
+        return 0
 
-    def request_give(self):
-        targetID = 1
-        status = self.user_man.request_give(targetID,30)
-        return status
+    def request_give(self, event):
+        targetID = event.user
+        self.user_man.request_give(targetID)
+        return 0
 
     def leave(self):
         '''

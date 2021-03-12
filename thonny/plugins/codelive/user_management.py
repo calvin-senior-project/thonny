@@ -35,70 +35,60 @@ class MqttUserManagement(mqtt_client.Client):
         self.qos = qos
         self.delay = delay
         self.users_topic = topic + "/" + "UserManagement"
-
-    def print_something(self):
-        print(self.broker, "Hello Nerd")
+        self.reply_topic = None
+        self.my_id_topic = self.users_topic + "/" + str(self.session.user_id)
 
     def Connect(self):
         mqtt_client.Client.connect(self, self.broker, self.port, 60)
         mqtt_client.Client.subscribe(self, self.users_topic, qos=self.qos)
-        mqtt_client.Client.subscribe(self, self.users_topic + "/" + str(self.session.user_id), qos=self.qos)
+        mqtt_client.Client.subscribe(self, self.my_id_topic, qos=self.qos)
 
     def on_message(self, client, data, msg):
-        json_msg = json.loads(msg.payload)
-        sender_id = get_sender_id(json_msg)
-
-        if sender_id == self.session.user_id:
-            print(sender_id,"It's me", "instr ignored")
+        try:
+            json_msg = json.loads(msg.payload)
+        except Exception:
             return
-   
-        if json_msg['type'] == 'request_control':
-            if tk.messagebox.askokcancel(parent = get_workbench(),
-                                     title = "Control Request",
-                                     message = "Make " + json_msg['name'] + " host?"): #add a timeout on this?
-                self.respond_to_request(json_msg, True) 
+        sender_id = get_sender_id(json_msg)
+        if sender_id == self.session.user_id:
+            print("instr ignored")
+            return
+
+        if msg.topic == self.reply_topic:
+            self.handle_confirmation(json_msg)
+            
         
-        if json_msg['type'] == 'request_give':
-            if tk.messagebox.askokcancel(parent = get_workbench(),
-                                     title = "Control Request",
-                                     message = "Accept host-handoff from " + json_msg['name'] + "?"): #add a timeout on this?
-                self.respond_to_request(json_msg, True) 
-                
-
-    
-    def publish(self, msg = None, id_assignment = None, unique_code =  None):
-        send_msg = {
-            "id": self.session.user_id,
-            "instr": msg
-        }
-        mqtt_client.Client.publish(self, self.users_topic, payload = json.dumps(send_msg))
+        if msg.topic == self.my_id_topic:
+            self.handle_permission_rq(json_msg)
 
 
-    def request_give(self,targetID, timeout):
+    def request_give(self,targetID):
         if targetID not in self.session._users or targetID == self.session.user_id:
             return 3
-        reply_url = str(uuid.uuid4())
+        if self.reply_topic: #cleanup
+            mqtt_client.Client.unsubscribe(self, self.reply_topic)
+        self.reply_topic = self.users_topic + "/" + str(uuid.uuid4())
         request = {
             "id" : str(self.session.user_id),
-            "name": self.session.name,
-            "reply": reply_url,
+            "name": self.session.username,
+            "reply": self.reply_topic,
             "type": "request_give"
         }
+        mqtt_client.Client.subscribe(self,self.reply_topic, qos=self.qos)
         mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(targetID), json.dumps(request), self.broker)
-        payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, timeout)
+        #payload = mqttc.MqttConnection.single_subscribe(self.reply_topic, self.broker, timeout)
 
-        if payload == "":
-            return 2
-        try:
-            response = json.loads(payload)
-            if response['id'] == str(self.session.user_id) and response['approved'] == True:
-                print("yes")
-                return 0
-            elif response['id'] == str(self.session.user_id) and response['approved'] == False:
-                return 1
-        except Exception:
-            pass
-        return 3
+        # if payload == "":
+        #     return 2
+        # try:
+        #     response = json.loads(payload)
+        #     if response['id'] == str(self.session.user_id) and response['approved'] == True:
+        #         print("yes")
+        #         return 0
+        #     elif response['id'] == str(self.session.user_id) and response['approved'] == False:
+        #         return 1
+        # except Exception:
+        #     pass
+        # return 3
     
     def respond_to_give(self,json_msg, approved):
         response = {
@@ -106,35 +96,38 @@ class MqttUserManagement(mqtt_client.Client):
             "approved": approved,
             "type": "request_give"
         }
-        mqtt_publish.single(self.users_topic + "/" + json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
+        mqttc.MqttConnection.single_publish(json_msg["reply"], json.dumps(response), self.broker)
 
-    def request_control(self, timeout):
+    def request_control(self):
         host_id, host_name = self.session.get_driver()
         if host_id in {-1, self.session.user_id}:
             return 3
-        reply_url = str(uuid.uuid4())
+        if self.reply_topic: #cleanup
+            mqtt_client.Client.unsubscribe(self, self.reply_topic)
+        self.reply_topic = self.users_topic + "/" + str(uuid.uuid4())
         request = {
             "id" : str(self.session.user_id),
-            "name": self.session.name,
-            "reply": reply_url,
+            "name": self.session.username,
+            "reply": self.reply_topic,
             "type": "request_control"
         }
 
+        mqtt_client.Client.subscribe(self,self.reply_topic, qos=self.qos)
         mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(host_id), json.dumps(request), self.broker)
-        payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, timeout)
+        #payload = mqttc.MqttConnection.single_subscribe(self.reply_topic, self.broker, timeout)
 
-        if payload == "":
-            return 2
-        try:
-            response = json.loads(payload)
-            if response['id'] == str(self.session.user_id) and response['approved'] == True:
-                print("yes")
-                return 0
-            elif response['id'] == str(self.session.user_id) and response['approved'] == False:
-                return 1
-        except Exception:
-            pass
-        return 3
+        # if payload == "":
+        #     return 2
+        # try:
+        #     response = json.loads(payload)
+        #     if response['id'] == str(self.session.user_id) and response['approved'] == True:
+        #         print("yes")
+        #         return 0
+        #     elif response['id'] == str(self.session.user_id) and response['approved'] == False:
+        #         return 1
+        # except Exception:
+        #     pass
+        # return 3
 
 
     def respond_to_request(self, json_msg, approved):
@@ -143,9 +136,42 @@ class MqttUserManagement(mqtt_client.Client):
             "approved": approved,
             "type": "request_control"
         }
+        mqtt_publish.single(json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
 
-        mqtt_publish.single(self.users_topic + "/" + json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
+    def handle_confirmation(self, json_msg):
+        message =""
+        if json_msg['approved']:
+            if json_msg['type'] == 'request_give':
+                pass
+                #call function to disable relevant info
+            else: #if request_control
+                pass
+                #call function to enable relevant info 
+            message = "Granted"
+        else:
+            message = "Denied"
+        tk.messagebox.showinfo(
+                                    title = "Control Request",
+                                    message = "Control Request " + message)
+        mqtt_client.Client.unsubscribe(self, self.reply_topic)
+        self.reply_topic = None
 
-
-
+    def handle_permission_rq(self,json_msg):
+        if json_msg['type'] == 'request_control':
+            if tk.messagebox.askokcancel(parent = get_workbench(),
+                                        title = "Control Request",
+                                        message = "Make " + json_msg['name'] + " host?"): #add a timeout on this?
+                self.respond_to_request(json_msg, True)
+                #call function to disable relevant info
+            else:
+                self.respond_to_request(json_msg, False)
+            
+        if json_msg['type'] == 'request_give':
+            if tk.messagebox.askokcancel(parent = get_workbench(),
+                                        title = "Control Request",
+                                        message = "Accept host-handoff from " + json_msg['name'] + "?"): #add a timeout on this?
+                self.respond_to_give(json_msg, True)
+                #call function to enable relevant info
+            else:
+                self.respond_to_give(json_msg, False)
         
