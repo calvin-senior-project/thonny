@@ -96,7 +96,8 @@ class Session:
     @classmethod
     def join_session(cls, name, topic, broker, debug = False):
         current_state = cmqtt.MqttConnection.handshake(name, topic, broker)
-        print(current_state)
+        if debug:
+           print(current_state)
         shared_editors = utils.intiialize_documents(current_state["docs"])
         users = {user.id : user for user in current_state["users"]}
 
@@ -424,14 +425,21 @@ class Session:
         
         return -1, "null"
     
-    def new_host(self, user_id):
-        pass
+    def new_host(self, user_id = None):
+        if user_id == self.user_id:
+            self.be_host()
+        else:
+            self.be_copilot()
 
     def be_host(self):
-        pass
+        self.enable_editing()
+        self.is_host = True
+        self.dialog.update_host(self.user_id)
 
-    def be_copilot(self):
-        pass
+    def be_copilot(self, new_host):
+        self.disable_editing()
+        self.is_host = False
+        self.dialog.update_host(new_host)
     
     def get_name(self, _id):
         print(self._users[_id].name)
@@ -496,7 +504,6 @@ class Session:
     def start_session(self):
         self._connection.Connect()
         self._connection.loop_start()
-
 
 if __name__ == "__main__":
 

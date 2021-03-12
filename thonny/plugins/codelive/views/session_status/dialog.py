@@ -18,7 +18,6 @@ class SessionInfo(ttk.LabelFrame):
 
         # feilds
         connection_info = session.get_connection_info()
-        print(connection_info)
 
         self.session = session
         self.driver_name = tk.StringVar()

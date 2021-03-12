@@ -1,8 +1,18 @@
 import tkinter as tk
 from tkinter import ttk
+
 from thonny.plugins.codelive.mqtt_connection import topic_exists
 
+from thonny.plugins.codelive.views.hinttext import HintText
+from thonny.plugins.codelive.views.textspin import TextSpin
+from thonny.plugins.codelive.mqtt_connection import BROKER_URLS
+
 BG = "#EEEEE4"
+JOIN_DIA_MIN_SIZE = {
+    "width": 470,
+    "height": 220
+}
+
 class JoinSessionDialog(tk.Toplevel):
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent, bg = BG)
@@ -18,23 +28,27 @@ class JoinSessionDialog(tk.Toplevel):
         form_frame = ttk.Frame(frame)
 
         name_label = ttk.Label(form_frame, text = "Your alias")
-        self.name_input = tk.Text(form_frame, height= 1)
+        self.name_input = HintText(form_frame)
 
         topic_label = ttk.Label(form_frame, text = "Session Topic")
-        self.topic_input = tk.Text(form_frame, height= 1)
+        self.topic_input = HintText(form_frame)
 
         broker_label = ttk.Label(form_frame, text = "MQTT Broker")
-        self.broker_input = tk.Text(form_frame, height= 1)
+        broker_frame = ttk.Frame(form_frame)
+        self.broker_input, self.default_broker_val, self.default_broker_check = self._make_broker_entry(broker_frame)
 
-        name_label.grid(row = 0, column = 0, sticky = tk.E)
-        self.name_input.grid(row = 0, column = 1, sticky = tk.W, padx = 10, pady = 5)
+        name_label.grid(row = 0, column = 0, sticky = tk.W + tk.E + tk.N, pady = 5)
+        self.name_input.grid(row = 0, column = 1, sticky = tk.W + tk.E + tk.N, padx = 10, pady = 5)
         
-        topic_label.grid(row = 1, column = 0, sticky=tk.E)
-        self.topic_input.grid(row = 1, column = 1, sticky=tk.W, padx = 10, pady = 5)
+        topic_label.grid(row = 1, column = 0, sticky= tk.E + tk.W + tk.N, pady = 5)
+        self.topic_input.grid(row = 1, column = 1, sticky= tk.E + tk.W + tk.N, padx = 10, pady = 5)
 
-        broker_label.grid(row = 2, column = 0, sticky=tk.E)
-        self.broker_input.grid(row = 2, column = 1, sticky=tk.W, padx = 10, pady = 5)
+        broker_label.grid(row = 2, column = 0, sticky= tk.W + tk.E + tk.N, pady = 5)
+        broker_frame.grid(row = 2, column = 1, sticky= tk.E + tk.W + tk.N, padx = 10, pady = 5)
         
+        form_frame.columnconfigure(0, weight = 0)
+        form_frame.columnconfigure(1, weight = 4)
+
         button_frame = ttk.Frame(frame)
 
         start_button = tk.Button(button_frame,
@@ -52,13 +66,15 @@ class JoinSessionDialog(tk.Toplevel):
         start_button.pack(side=tk.RIGHT, padx = 5)
         cancel_button.pack(side=tk.LEFT, padx = 5)
 
-        intro.pack(expand=True, padx = 10, pady = 5)
-        form_frame.pack(fill=tk.X, expand=True, padx = 10, pady=5)
+        intro.pack(side = tk.TOP, fill = tk.X, expand=True, padx = 10, pady = 5, anchor = tk.CENTER)
+        form_frame.pack(side = tk.TOP, fill=tk.X, expand=True, padx = 10, pady=5)
         button_frame.pack(side = tk.BOTTOM, padx = 10, pady=5)
         
         frame.pack(fill = tk.BOTH, expand = True)
 
         self.center(parent.winfo_geometry())
+        self.minsize(JOIN_DIA_MIN_SIZE["width"], JOIN_DIA_MIN_SIZE["height"])
+        self.maxsize(JOIN_DIA_MIN_SIZE["width"], JOIN_DIA_MIN_SIZE["height"])
 
     def center(self, parent_geo):
         parent_dim, parent_x, parent_y = parent_geo.split("+")
@@ -67,18 +83,38 @@ class JoinSessionDialog(tk.Toplevel):
         parent_x = int(parent_x)
         parent_y = int(parent_y)
 
-        w = 450
-        h = 180
+        w = JOIN_DIA_MIN_SIZE["width"]
+        h = JOIN_DIA_MIN_SIZE["height"]
 
         x = parent_x + (parent_w - w) / 2
         y = parent_y + (parent_h - h) / 2
 
         self.geometry("%dx%d+%d+%d" % (w, h, x, y))
 
+    def _make_broker_entry(self, parent):
+        _input = TextSpin(parent, BROKER_URLS, mode = 'option')
+        val = tk.IntVar(); val.set(1)
+        check = ttk.Checkbutton(parent, 
+                                text = "Built-In", 
+                                command = self._broker_check_cb,
+                                variable = val,
+                                onvalue = 1,
+                                offvalue = 0)
+        
+        _input.grid(row = 0, column = 0, columnspan = 2, sticky = tk.N + tk.S + tk.E + tk.W)
+        check.grid(row = 1, column = 0, columnspan = 1, sticky = tk.S + tk.W)
+        parent.columnconfigure(0, weight = 1)
+
+        return _input, val, check
+    
+    def _broker_check_cb(self):
+        is_text = self.default_broker_val.get() == 0
+        self.broker_input.mode("text" if is_text else "option")
+
     def join_callback(self):
-        name = self.name_input.get("0.0", "end").strip()
-        topic = self.topic_input.get("0.0", "end").strip()
-        broker = self.broker_input.get("0.0", "end").strip()
+        name = self.name_input.val()
+        topic = self.topic_input.val()
+        broker = self.broker_input.val()
 
         if self.valid_name(name) and self.valid_connection(topic, broker):
             self.data["name"] = name

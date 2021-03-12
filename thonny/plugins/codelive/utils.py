@@ -131,7 +131,8 @@ def str_to_editor(title, body):
     wb.event_generate("NewFile", editor=new_editor)
     ttk.Notebook.add(notebook, new_editor, text = title)
     notebook.select(new_editor)
-    notebook.tab("current", text = title)
+
+    notebook.update_editor_title(new_editor, title = title)
 
     new_editor.focus_set()
     tk.Text.insert(new_editor.get_text_widget(), "0.0", body)

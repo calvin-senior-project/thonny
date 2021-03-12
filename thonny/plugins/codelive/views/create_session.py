@@ -30,13 +30,9 @@ class EditorSelector(ttk.Frame):
                           text = "Please choose the editors you want to share")
         
         container, self.editor_list = self.get_list()
-        self.editor_list.bind("<<ListboxSelect>>", self.some_binding)
 
         label.pack(side = tk.TOP)
         container.pack(side = tk.BOTTOM)
-
-    def some_binding(self, event):
-        pass 
     
     def on_select_all(self):
         # on uncheck
@@ -113,13 +109,13 @@ class CreateSessionDialog(tk.Toplevel):
         form_frame = ttk.Frame(frame, width = 50)
 
         name_label = ttk.Label(form_frame, text = "Your alias")
-        self.name_input = HintText(form_frame) # tk.Text(form_frame, height= 1, width = 50)
+        self.name_input = HintText(form_frame)
 
         session_topic_label = ttk.Label(form_frame, text = "Session Topic")
-        self.topic_input = HintText(form_frame) # tk.Text(form_frame, height= 1, width = 50)
+        self.topic_input = HintText(form_frame)
 
         broker_label = ttk.Label(form_frame, text = "MQTT Broker")
-        self.broker_input = TextSpin(form_frame, BROKER_URLS, mode = 'option') # tk.Text(form_frame, height= 1, width = 50)
+        self.broker_input = TextSpin(form_frame, BROKER_URLS, mode = 'option')
 
         self.auto_gen_topic_state = tk.IntVar()
         self.auto_generate_check = ttk.Checkbutton(form_frame, 
@@ -146,7 +142,7 @@ class CreateSessionDialog(tk.Toplevel):
         self.auto_generate_check.grid(row = 1, column = 3, sticky = tk.W)
 
         broker_label.grid(row = 2, column = 0, sticky=tk.E)
-        self.broker_input.grid(row = 2, column = 1, sticky=tk.W, padx = 10, pady = 5)
+        self.broker_input.grid(row = 2, column = 1, sticky=tk.W + tk.E, padx = 10, pady = 5)
         self.default_broker_check.grid(row = 2, column = 3, sticky = tk.W)
 
         sep1 = ttk.Separator(frame, orient = tk.HORIZONTAL)
@@ -221,7 +217,6 @@ class CreateSessionDialog(tk.Toplevel):
         name = self.name_input.val()
         topic = self.topic_input.val()
         broker = self.broker_input.val()
-        print(broker)
 
         if self.valid_name(name) and self.valid_connection(topic, broker) and self.valid_selection():
             self.data["name"] = name
