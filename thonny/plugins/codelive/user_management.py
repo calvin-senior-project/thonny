@@ -4,7 +4,6 @@ import paho.mqtt.client as mqtt_client
 import paho.mqtt.publish as mqtt_publish
 import paho.mqtt.subscribe as mqtt_subscribe
 import tkinter as tk
-import time
 
 from thonny import get_workbench
 
@@ -76,7 +75,6 @@ class MqttUserManagement(mqtt_client.Client):
 
 
     def request_give(self,targetID, timeout):
-        time.sleep(30)
         if targetID not in self.session._users or targetID == self.session.user_id:
             return 3
         reply_url = str(uuid.uuid4())
@@ -86,7 +84,6 @@ class MqttUserManagement(mqtt_client.Client):
             "reply": reply_url,
             "type": "request_give"
         }
-        print("request_give")
         mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(targetID), json.dumps(request), self.broker)
         payload = mqttc.MqttConnection.single_subscribe(self.users_topic + "/" + reply_url, self.broker, timeout)
 
@@ -109,7 +106,6 @@ class MqttUserManagement(mqtt_client.Client):
             "approved": approved,
             "type": "request_give"
         }
-        print("Responding...")
         mqtt_publish.single(self.users_topic + "/" + json_msg["reply"], payload= json.dumps(response), hostname = self.broker)
 
     def request_control(self, timeout):
