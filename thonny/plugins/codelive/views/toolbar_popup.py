@@ -20,7 +20,7 @@ class ToolbarPopup(tkinter.Menu):
             for item in groups[group]:
                 if item["include_in_menu"]:
                     self.add_command(label = item["command_label"], command = item["handler"],
-                                    state = tkinter.NORMAL if item["enable"] else tkinter.DISABLED)
+                                    state = tkinter.NORMAL if item["enable"]() else tkinter.DISABLED)
             if sep_count < len(groups) - 1:
                 self.add_separator()
                 sep_count += 1

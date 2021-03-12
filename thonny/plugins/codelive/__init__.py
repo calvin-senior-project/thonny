@@ -116,7 +116,7 @@ def get_commands():
                 "include_in_menu" : False,
                 "include_in_toolbar" : True,
                 "bell_when_denied" : True,
-                "enable": False
+                "enable": lambda: False
             }
         ],
 
@@ -133,7 +133,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session == None
+                "enable": lambda: not live_session()
             },
             {
                 "command_id": "codelive_join",
@@ -147,7 +147,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session == None
+                "enable": lambda: not live_session()
             },
             # For testing only
             {
@@ -162,7 +162,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session == None
+                "enable": lambda: not live_session()
             },
             # For testing only
             {
@@ -177,7 +177,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session == None
+                "enable": lambda: not live_session()
             },
         ],
 
@@ -194,7 +194,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session != None
+                "enable": live_session
             },
             {
                 "command_id": "codelive_leave",
@@ -208,7 +208,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session != None
+                "enable": live_session
             }
         ],
         22 : [
@@ -224,7 +224,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": session != None
+                "enable": live_session
             }
         ],
         23 : [
@@ -240,7 +240,7 @@ def get_commands():
                 "include_in_menu" : True,
                 "include_in_toolbar" : False,
                 "bell_when_denied" : True,
-                "enable": True
+                "enable": lambda: True
             }
         ]
     }
