@@ -25,23 +25,6 @@ session = None
 
 DEBUG = True
 
-def start_session():
-    top = StartUpWizard(parent=WORKBENCH)
-    WORKBENCH.wait_window(top)
-
-    global session
-    if top.get_session_mode() == "Host":
-        print("Starting host")
-        session = Session(is_host=True)
-    elif top.get_session_mode() == "Client":
-        print("Starting client")
-        session = Session(topic = top.get_topic())
-    else:
-        return ("null", -1)
-    
-    session.start_session()
-    return (top.get_session_mode(), 0)
-
 def create_session_vanilla(data = None):
     global session
     data_session = data or {
@@ -66,15 +49,6 @@ def create_session():
         return
 
     create_session_vanilla(top.data)
-
-def toolbar_callback():
-    menu = ToolbarPopup(WORKBENCH, get_commands())
-
-    try: 
-        menu.tk_popup(WORKBENCH.winfo_pointerx(),
-                                 WORKBENCH.winfo_pointery())
-    finally: 
-        menu.grab_release()
 
 def join_session_vanilla(data = None):
     global session
@@ -114,6 +88,15 @@ def null_cmd(event):
 def live_session():
     global session
     return session != None
+
+def toolbar_callback():
+    menu = ToolbarPopup(WORKBENCH, get_commands())
+
+    try: 
+        menu.tk_popup(WORKBENCH.winfo_pointerx(),
+                                 WORKBENCH.winfo_pointery())
+    finally: 
+        menu.grab_release()
 
 def get_commands():
     global session
