@@ -41,6 +41,7 @@ class Session:
         self.username = name if name != None else ("Host" if is_host else "Client")
         self.user_id = _id if _id != -1 else utils.get_new_id()
         self._used_ids = []
+        self._bind_hashes = {}
 
         # UI handles
         self._editor_notebook = WORKBENCH.get_editor_notebook()
@@ -60,12 +61,11 @@ class Session:
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
         
         # bindings
-        WORKBENCH.bind("RemoteChange", self.apply_remote_changes)
-        self._callback_ids = {
-            "text": self.bind_events(),
-            "cursor": self.bind_cursor_callbacks()
-        }
+        self._bind_event(WORKBENCH, "RemoteChange", self.apply_remote_changes)
+        self.bind_events()
+        self.bind_cursor_callbacks()
         print("events bound")
+
         self.initialized = False
         
         self._default_insert = None
@@ -76,6 +76,11 @@ class Session:
 
         self._debug = debug
         print("methods replaced")
+
+        if is_host:
+            self.enable_editing()
+        else:
+            self.disable_editing()
         
         self.dialog = SessionDialog(WORKBENCH, self)
 
@@ -101,6 +106,66 @@ class Session:
                        broker = broker,
                        users = users,
                        shared_editors = shared_editors)
+    
+    def _bind_event(self, widget, seq, handler, override = True, debug = False):
+        if debug:
+            print("Binding Widget: %s to seq: %s with handler: %s..." %
+                    (str(widget), str(seq), str(handler)))
+        binding = None
+        if widget == get_workbench():
+            widget.bind(seq, handler, override)
+            binding = {"handler": handler, 
+                       "seq": seq}
+            if "workbench" in self._bind_hashes:
+                self._bind_hashes["workbench"].append(binding)
+            else:
+                self._bind_hashes["workbench"] = [binding]
+        else:
+            binding = {"id": widget.bind(seq, handler, override), 
+                       "seq": seq}
+            if widget in self._bind_hashes:
+                self._bind_hashes[widget].append(binding)
+            else:
+                self._bind_hashes[widget] = [binding]
+
+        if debug:
+            print("  Done. Binding_id:", binding["handler"] if "handler" in binding else binding["id"])
+
+    def unbind_all(self, debug = False):
+        if debug:
+            print("Unbinding all events...")
+        def unbind_workbench():
+            wb = get_workbench()
+            for binding in self._bind_hashes["workbench"]:
+                if debug:
+                    print("\t > Unbinding:", binding["seq"], end = "... ")
+                wb.unbind(binding["seq"], binding["handler"])
+                if debug:
+                    print("Done")
+
+            del self._bind_hashes["workbench"]
+    
+        def unbind_others(widget):
+            for binding in self._bind_hashes[widget]:
+                if debug:
+                    print("\t > Unbinding:", binding["seq"], end = "... ")
+                widget.unbind(binding["seq"], binding["id"])
+                if debug:
+                    print("Done")
+
+            del self._bind_hashes[widget]
+
+        for widget in list(self._bind_hashes.keys()):
+            if debug:
+                print("   Unbinding widget:", widget)
+            if widget == "workbench":
+                unbind_workbench()
+            else:
+                unbind_others(widget)
+            if debug:
+                print("\t Done")
+        if debug:
+            print("Done")
     
     def _add_self(self, is_host):
         current_doc = min(self._shared_editors["id_first"])
@@ -200,7 +265,7 @@ class Session:
                 if i != existing[i]:
                     return i
             return len(existing)
-    
+
     def get_docs(self):
         json_form = dict()
         print("jeu:", json_form)
@@ -242,16 +307,11 @@ class Session:
 
         If the event is bound to a widget, the name of the widget is "editor_<the editor's assigned id>". 
         '''
-
-        bind_hash = dict()
-
         for widget in self._shared_editors["txt_first"]:
-            bind_hash["<KeyPress>|editor_" + str(self.e_id_from_text(widget))] = widget.bind("<KeyPress>", self.broadcast_keypress, True)
+            self._bind_event(widget, "<KeyPress>", self.broadcast_keypress, True)
         
-        bind_hash["LocalInsert|get_workbench()"] = get_workbench().bind("LocalInsert", self.broadcast_insert, True)
-        bind_hash["LocalDelete|get_workbench()"] = get_workbench().bind("LocalDelete", self.broadcast_delete, True)
-        
-        return bind_hash
+        self._bind_event(get_workbench(), "LocalInsert", self.broadcast_insert, True)
+        self._bind_event(get_workbench(), "LocalDelete", self.broadcast_delete, True)
 
     def _cursor_blink(self):
         '''
@@ -274,6 +334,9 @@ class Session:
         self._connection.publish(msg)
     
     def boradcast_cursor_motion(self, event):
+        if event.widget.is_read_only():
+            return
+
         editor_id = self.e_id_from_text(event.widget)
         instr = {
             "type": "M",
@@ -327,38 +390,23 @@ class Session:
         self.send(instr)
     
     def bind_cursor_callbacks(self):
-        bind_hash = dict()
-        text_widget = self._editor_notebook.get_current_editor().get_text_widget()
 
-        bind_hash["<KeyRelease-Left>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<KeyRelease-Left>", self.boradcast_cursor_motion, True)
-        bind_hash["<KeyRelease-Left>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<KeyRelease-Right>", self.boradcast_cursor_motion, True)
-        bind_hash["<KeyRelease-Left>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<KeyRelease-Up>", self.boradcast_cursor_motion, True)
-        bind_hash["<KeyRelease-Left>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<KeyRelease-Down>", self.boradcast_cursor_motion, True)
-        bind_hash["<KeyRelease-Left>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<KeyRelease-Return>", self.boradcast_cursor_motion, True)
-        bind_hash["<ButtonRelease-1>|self._editor_notebook.get_current_editor().get_text_widget()"] = text_widget.bind("<ButtonRelease-1>", self.boradcast_cursor_motion, True)
-
-        return bind_hash
+        for text_widget in self._shared_editors["txt_first"]:
+            
+            self._bind_event(text_widget, "<KeyRelease-Left>", self.boradcast_cursor_motion, True)
+            self._bind_event(text_widget, "<KeyRelease-Right>", self.boradcast_cursor_motion, True)
+            self._bind_event(text_widget, "<KeyRelease-Up>", self.boradcast_cursor_motion, True)
+            self._bind_event(text_widget, "<KeyRelease-Down>", self.boradcast_cursor_motion, True)
+            self._bind_event(text_widget, "<KeyRelease-Return>", self.boradcast_cursor_motion, True)
+            self._bind_event(text_widget, "<ButtonRelease-1>", self.boradcast_cursor_motion, True)
 
     def enable_editing(self):
-        pass
+        for text_widget in self._shared_editors["txt_first"]:
+            text_widget.set_read_only(False)
 
     def disable_editing(self):
-        pass
-
-    def unbind_input(self):
-        def unbind_editor(editor_id, id_map):
-            widget = self.text_widget_from_id(editor_id)
-            widget.unbind(event, id_map)
-
-        for call_type in self._callback_ids:
-            id_map = self._callback_ids[call_type]
-
-            for i in id_map:
-                event, widget = i.split("|")
-                if widget.startswith("editor_"):
-                    unbind_editor(int(widget[widget.find("_") + 1:]), id_map)
-                else:
-                    eval(widget).unbind(event, id_map)
+        for text_widget in self._shared_editors["txt_first"]:
+            text_widget.set_read_only(True)
 
     def get_connection_info(self):
         return {"name" : self.username,
@@ -376,6 +424,12 @@ class Session:
         
         return -1, "null"
     
+    def be_host(self):
+        pass
+
+    def be_copilot(self):
+        pass
+    
     def get_name(self, _id):
         print(self._users[_id].name)
         return self._users[_id].name
@@ -384,27 +438,33 @@ class Session:
         return self._users
     
     def apply_remote_changes(self, event):
+        '''
+        WARNING: We don't expect the host (driver) to be getting ANY remote changes. So, we only expect 
+        apply_remote_changes to be used in "client" users. So, the function makes the editor
+        read only immediately after apply changes.
+        '''
         msg = event.change
-        
-        codeview = None
     
         if self._debug:
             print("command: %s" % msg)
         
-        codeview = self.text_widget_from_id(msg["doc"])
+        widget = self.text_widget_from_id(msg["doc"])
 
         if msg["type"] == "I":
-            widget = self.text_widget_from_id(msg["doc"])
             pos = msg["pos"]
             new_text = msg["text"]
 
+            widget.set_read_only(False)
             tk.Text.insert(widget, pos, new_text)
+            widget.set_read_only(True)
         
         elif msg["type"] == "D":
+            widget.set_read_only(False)
             if "end" in msg:
-                tk.Text.delete(codeview, msg["start"], msg["end"])
+                tk.Text.delete(widget, msg["start"], msg["end"])
             else:
-                tk.Text.delete(codeview, msg["start"])
+                tk.Text.delete(widget, msg["start"])
+            widget.set_read_only(True)
         
         elif msg["type"] == "M":
             # user_id = msg["user"]
