@@ -286,7 +286,7 @@ class Session:
         print("jeu:", json_form)
         for editor in self._shared_editors["ed_first"]:
             content = editor.get_text_widget().get("0.0", tk.END)
-            content = content[: -1] if len(content) > 1 else content
+            content = content[: -1] if len(content) >= 1 else content # remove needles \n at the end of file
 
             temp = {"title": editor.get_title(),
                     "content": content}
