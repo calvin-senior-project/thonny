@@ -58,8 +58,13 @@ class Session:
         self.is_host = is_host
         self.is_cohost = is_cohost
 
-        self.user_man = userManMqtt.MqttUserManagement(self._connection.session,self._connection.broker, self._connection.port, self._connection.qos,self._connection.delay,self._connection.topic)
-
+        self.user_man = \
+            userManMqtt.MqttUserManagement(self._connection.session,
+                                           self._connection.broker,
+                                           self._connection.port,
+                                           self._connection.qos,
+                                           self._connection.delay,
+                                           self._connection.topic)
 
         # service threads
         # self._cursor_blink_thread = threading.Thread(target=self._cursor_blink, daemon=True)
@@ -213,7 +218,6 @@ class Session:
         On timeout, returns 2
         In a general error, returns 3, and error object
         '''
-        # user_man.request_control()
         self.user_man.request_control()
         return 0
 
@@ -435,22 +439,46 @@ class Session:
         
         return -1, "null"
     
-    def new_host(self, user_id = None):
+    def change_host(self, user_id = None):
         if user_id == self.user_id:
             self.be_host()
+        elif self.is_host:
+            self.be_copilot(user_id)
+        elif user_id != None:
+            self.other_host(user_id)
         else:
-            self.be_copilot()
+            print("Err: ", user_id, "is not a valid input")
 
     def be_host(self):
+        _id, _ = self.get_driver()
+
         self.enable_editing()
-        self.is_host = True
+
+        self._users[_id].is_host = False 
+        self.is_host = self._users[self.user_id].is_host = True
+
         self.dialog.update_host(self.user_id)
 
-    def be_copilot(self, new_host):
+    def be_copilot(self, new_host_id = None):
         self.disable_editing()
-        self.is_host = False
-        self.dialog.update_host(new_host)
-    
+
+        if new_host_id != None:
+            self._users[new_host_id].is_host = True 
+        self.is_host = self._users[self.user_id].is_host = False
+
+        self.dialog.update_host(new_host_id)
+
+    def other_host(self, new_host_id):
+        _id, _ = self.get_driver()
+
+        if _id == new_host_id:
+            return
+
+        self._users[_id].is_host = False 
+        self._users[new_host_id].is_host = True
+
+        self.dialog.update_host(new_host_id)
+
     def get_name(self, _id):
         print(self._users[_id].name)
         return self._users[_id].name

@@ -68,34 +68,21 @@ class MqttUserManagement(mqtt_client.Client):
             mqtt_client.Client.unsubscribe(self, self.reply_topic)
         self.reply_topic = self.users_topic + "/" + str(uuid.uuid4())
         request = {
-            "id" : str(self.session.user_id),
+            "id" : self.session.user_id,
             "name": self.session.username,
             "reply": self.reply_topic,
             "type": "request_give"
         }
         mqtt_client.Client.subscribe(self,self.reply_topic, qos=self.qos)
         mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(targetID), json.dumps(request), self.broker)
-        #payload = mqttc.MqttConnection.single_subscribe(self.reply_topic, self.broker, timeout)
-
-        # if payload == "":
-        #     return 2
-        # try:
-        #     response = json.loads(payload)
-        #     if response['id'] == str(self.session.user_id) and response['approved'] == True:
-        #         print("yes")
-        #         return 0
-        #     elif response['id'] == str(self.session.user_id) and response['approved'] == False:
-        #         return 1
-        # except Exception:
-        #     pass
-        # return 3
     
     def respond_to_give(self,json_msg, approved):
         response = {
-            "id" : json_msg["id"],
+            "id" : self.session.user_id,
             "approved": approved,
             "type": "request_give"
         }
+        print(response)
         mqttc.MqttConnection.single_publish(json_msg["reply"], json.dumps(response), self.broker)
 
     def request_control(self):
@@ -106,7 +93,7 @@ class MqttUserManagement(mqtt_client.Client):
             mqtt_client.Client.unsubscribe(self, self.reply_topic)
         self.reply_topic = self.users_topic + "/" + str(uuid.uuid4())
         request = {
-            "id" : str(self.session.user_id),
+            "id" : self.session.user_id,
             "name": self.session.username,
             "reply": self.reply_topic,
             "type": "request_control"
@@ -114,25 +101,11 @@ class MqttUserManagement(mqtt_client.Client):
 
         mqtt_client.Client.subscribe(self,self.reply_topic, qos=self.qos)
         mqttc.MqttConnection.single_publish(self.users_topic + "/" + str(host_id), json.dumps(request), self.broker)
-        #payload = mqttc.MqttConnection.single_subscribe(self.reply_topic, self.broker, timeout)
-
-        # if payload == "":
-        #     return 2
-        # try:
-        #     response = json.loads(payload)
-        #     if response['id'] == str(self.session.user_id) and response['approved'] == True:
-        #         print("yes")
-        #         return 0
-        #     elif response['id'] == str(self.session.user_id) and response['approved'] == False:
-        #         return 1
-        # except Exception:
-        #     pass
-        # return 3
 
 
     def respond_to_request(self, json_msg, approved):
         response = {
-            "id" : json_msg["id"],
+            "id" : self.session.user_id,
             "approved": approved,
             "type": "request_control"
         }
@@ -141,37 +114,31 @@ class MqttUserManagement(mqtt_client.Client):
     def handle_confirmation(self, json_msg):
         message =""
         if json_msg['approved']:
-            if json_msg['type'] == 'request_give':
-                pass
-                #call function to disable relevant info
-            else: #if request_control
-                pass
-                #call function to enable relevant info 
+            if json_msg["type"] == "request_control":
+                self.session.change_host(self.session.user_id)
+            else:
+                self.session.change_host(json_msg["id"])
             message = "Granted"
         else:
             message = "Denied"
-        tk.messagebox.showinfo(
-                                    title = "Control Request",
-                                    message = "Control Request " + message)
+        tk.messagebox.showinfo(title = "Control Request",
+                               message = "Control Request " + message)
         mqtt_client.Client.unsubscribe(self, self.reply_topic)
         self.reply_topic = None
 
     def handle_permission_rq(self,json_msg):
+        approve = False
         if json_msg['type'] == 'request_control':
-            if tk.messagebox.askokcancel(parent = get_workbench(),
-                                        title = "Control Request",
-                                        message = "Make " + json_msg['name'] + " host?"): #add a timeout on this?
-                self.respond_to_request(json_msg, True)
-                #call function to disable relevant info
-            else:
-                self.respond_to_request(json_msg, False)
+            approve = tk.messagebox.askokcancel(parent = get_workbench(),
+                        title = "Control Request",
+                        message = "Make " + json_msg['name'] + " host?") #add a timeout on this?
+            self.respond_to_request(json_msg, approve)
             
         if json_msg['type'] == 'request_give':
-            if tk.messagebox.askokcancel(parent = get_workbench(),
-                                        title = "Control Request",
-                                        message = "Accept host-handoff from " + json_msg['name'] + "?"): #add a timeout on this?
-                self.respond_to_give(json_msg, True)
-                #call function to enable relevant info
-            else:
-                self.respond_to_give(json_msg, False)
+            approve = tk.messagebox.askokcancel(parent = get_workbench(),
+                        title = "Control Request",
+                        message = "Accept host-handoff from " + json_msg['name'] + "?") #add a timeout on this?
+            self.respond_to_give(json_msg, approve)
         
+        if approve:
+            self.session.change_host(json_msg["id"] if json_msg['type'] == 'request_give' else self.user_id)
