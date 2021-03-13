@@ -141,4 +141,4 @@ class MqttUserManagement(mqtt_client.Client):
             self.respond_to_give(json_msg, approve)
         
         if approve:
-            self.session.change_host(json_msg["id"] if json_msg['type'] == 'request_give' else self.user_id)
+            self.session.change_host(self.session.user_id if json_msg['type'] == 'request_give' else json_msg["id"])
