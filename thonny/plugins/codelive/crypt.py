@@ -1,8 +1,12 @@
 import pyDH
 import threading
 import os
+import random
+from string import ascii_lowercase
+
 from cryptography.fernet import Fernet
 from binascii import unhexlify, b2a_base64
+from paho.mqtt import client, subscribe, publish
 
 GROUP = 16
 class Crypt:
@@ -54,10 +58,63 @@ class Crypt:
         '''
         return self._sess_key
 
+    def exchange_shared_key(self, broker, reply_topic, other_pub = None):
+        
+        dh = pyDH.DiffieHellman(16)
+        if other_pub != None:
+            publish.single(reply_topic, dh.gen_public_key, hostname=broker)
+            return dh.gen_shared_key(other_pub)
+        
+        else:
+            publish.single(reply_topic, dh.gen_public_key, hostname=broker)
+            o_pub = subscribe.simple(reply_topic, hostname=broker)
+            return dh.gen_shared_key(o_pub)
+
+    def vaidate_pwd(self, broker, topic, pwd):
+        '''
+        Client
+            - send a authenticate request on authentication subtopic
+                - Info sent:
+                    - public key
+            - exchange shared key
+            - use shared key to encrypt pwd
+            - send encrypted pwd
+
+            - if accepted: return 0
+            - if rejected: return -1
+            - if timed out: return -2
+        '''
+        reply_url = "".join([random.choice(ascii_lowercase) for _ in range(0, 32)])
+        dh = pyDH.DiffieHellman(16)
+
+        msg = {
+            "instr": "new_auth",
+            "pub": dh.gen_public_key(),
+            "reply_url": reply_url
+        }
+        pass
+
+    def authenticate(self, broker, topic, shared_key, role):
+        '''
+        Host
+            - exchage shared key
+            - wait for encrypted password
+            - decrypt payload
+            - use private key to hash pwd
+            - 
+            - listen to the remote person to respond with pwd key
+            - comapre hashes
+                - if accept: send affirm
+                - if reject: send reject
+        '''
+
+    def auth_pwd(self, pwd):
+        pass
+
     def auth(self, _hash):
         '''
         WARNING: Only to be used in handshakes
-        
+
         Checks if the _hash matches the password hash stored in memory.
         If it does, the function updates the pwd key and hash and returns true, Returns False otherwise.
         '''
