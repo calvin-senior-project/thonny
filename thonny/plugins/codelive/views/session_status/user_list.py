@@ -16,11 +16,11 @@ class UserListItem(tk.Frame):
         self.label_str.set(self.username)
 
         icon = self.create_icon()
-        name_label = tk.Label(self, textvariable = self.label_str, anchor = "w")
+        self.name_label = tk.Label(self, textvariable = self.label_str, anchor = "w")
         self.make_driver_button = tk.Button(self, text = "Give Control", width = 10, command = self.make_driver)
 
         icon.pack(side=tk.LEFT, padx = 10)
-        name_label.pack(side=tk.LEFT, fill = tk.X)
+        self.name_label.pack(side=tk.LEFT, fill = tk.X)
         self.make_driver_button.pack(side = tk.RIGHT, padx = 10)
 
         if self.is_driver:
@@ -43,7 +43,8 @@ class UserListItem(tk.Frame):
         if val == None:
             return self.is_driver
         else:
-            self.label_str.set(self.username + " [Driver]" if val else self.username[:- (len("[Driver]") + 1)])
+            self.label_str.set(self.username + " [Driver]" if val else self.username)
+            self.name_label.configure(fg = "green" if val else "black")
             self.is_driver = val
     
     def enable_button(self, val = True):
@@ -86,9 +87,13 @@ class UserList(ttk.LabelFrame):
     def update_driver(self, _id):
         is_host = self.session.user_id == _id
 
-        if is_host:
-            for line in self.widgets:
-                line.enable_button(line.user_id != _id)
+        for line in self.widgets.values():
+            if line.is_driver:
+                line.driver(False)
+            if line.user_id == _id:
+                line.driver(True)
+
+            line.enable_button(line.user_id != _id if is_host else False)
 
     def get_driver(self):
         return self.driver

@@ -83,7 +83,7 @@ class ActionList(ttk.Frame):
             return self.end["state"] == tk.NORMAL
 
         self.request_control["state"] = tk.DISABLED if val else tk.NORMAL
-        self.end["state"] = tk.DISABLED if val else tk.NORMAL
+        self.end["state"] = tk.NORMAL if val else tk.DISABLED
     
     def toggle_driver(self):
         self.end["state"] = tk.DISABLED if self.end["state"] == tk.NORMAL else tk.NORMAL
@@ -186,13 +186,9 @@ class SessionDialog(tk.Toplevel):
         self.geometry("%dx%d+%d+%d" % (w, h, _x, _y))
 
     def update_host(self, _id = None):
+        self.session_info.update_driver_id(_id)
         self.user_list.update_driver(_id)
-        self.buttons.driver(self.session.is_host)
-         
-        if _id == None:
-            self.session_info.update_driver()
-        else:
-            self.session_info.update_driver_id(_id)
+        self.buttons.driver(self.session.user_id == _id)
     
     def add_user(self, user):
         self.user_list.add_user(user)
@@ -212,7 +208,7 @@ if __name__ == "__main__":
 
     class DummyUser:
         def __init__(self, _id, name = None, is_host = False):
-            self.name = name if name != None else "John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
+            self.name = name if name != None else str(_id) + " - John " + ''.join(random.choice(string.ascii_uppercase) for i in range(10))
             self.id = _id
             self.position = "1.1"
             self.color = random.choice(colors)
@@ -226,6 +222,7 @@ if __name__ == "__main__":
         def __init__(self, is_host = False):
             self.user_id = 0
             self._users = {i : DummyUser(i) for i in range(1, 10)}
+            self._users[0] = DummyUser(0, "Me", is_host)
             self.username = "John Doe"
             self.is_host = is_host
 
@@ -250,17 +247,30 @@ if __name__ == "__main__":
         
         def get_users(self):
             return self._users
+        
+        def get_name(self, _id):
+            return self._users[_id].name
 
     root = tk.Tk()
     dummyUser = DummyUser(random.randint(0, 9), len(sys.argv) > 2 and sys.argv[2] == "host")
     dummySession = DummySession(len(sys.argv) > 2 and sys.argv[2] == "host")
 
     if sys.argv[1] == "dialog":
-        def t():
-            r = SessionDialog(root, dummySession)
+        frame = ttk.Frame(root)
+        r = SessionDialog(root, dummySession)
+        text = tk.Text(frame, width = 10, height = 1)
 
-        button = ttk.Button(root, text = "Hey", command = t)
-        button.pack()
+        def make_host():
+            _id = int(text.get("0.0", tk.END).strip())
+            if r == None:
+                print("Start dialog first")
+            else:
+                r.update_host(_id)
+        
+        button_mh = ttk.Button(frame, text = "Make", command = make_host)
+        text.grid(row = 0, column = 0, padx = (10, 2.5), pady = 10)
+        button_mh.grid(row = 0, column = 1, padx = (2.5, 10), pady = 10)
+        frame.pack()
 
     elif sys.argv[1] == "info":
         frame = SessionInfo(root, dummySession)
